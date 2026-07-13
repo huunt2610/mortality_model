@@ -1,0 +1,29 @@
+# Data — raw data is large and re-downloadable; keep structure only
+data/raw/*
+data/interim/*
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+
+# Fitted model objects (large binaries)
+models/*.rds
+models/*.pkl
+
+# Copyrighted papers
+references/*.pdf
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+renv/library/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/

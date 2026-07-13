@@ -1,0 +1,31 @@
+# Cấu hình trung tâm — mọi script Python và R đều đọc từ file này
+data:
+  source: "UN_WPP_2024"          # nguồn chính
+  sexes: ["male", "female", "total"]
+  years:
+    start: 1955
+    end: 2023
+
+ages:
+  lc_rh:                          # Lee-Carter & Renshaw-Haberman
+    min: 0
+    max: 90
+  cbd:                            # CBD chỉ phù hợp tuổi già
+    min: 55
+    max: 90
+
+backtest:
+  splits:
+    - {train_end: 2010, test_end: 2023}   # split chính
+    - {train_end: 2005, test_end: 2015}   # kiểm tra độ ổn định
+  exclude_covid_years: [2020, 2021, 2022] # báo cáo kết quả cả có và không có
+
+forecast:
+  horizon: 30                     # số năm dự báo
+  n_simulations: 5000             # mô phỏng khoảng tin cậy
+  kt_model: "rwd"                 # random walk with drift (mặc định LC)
+  gc_model: "arima"               # cohort effect dự báo bằng ARIMA
+
+evaluation:
+  metrics: ["rmse", "mape", "deviance"]
+  information_criteria: ["aic", "bic"]
