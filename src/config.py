@@ -6,6 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA_RAW = ROOT / "data" / "raw"
 DATA_INTERIM = ROOT / "data" / "interim"
 DATA_PROCESSED = ROOT / "data" / "processed"
+DATA_EXTERNAL = ROOT / "data" / "external"
 FIGURES = ROOT / "reports" / "figures"
 
 

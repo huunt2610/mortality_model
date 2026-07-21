@@ -9,8 +9,10 @@ library(yaml)
 cfg <- yaml::read_yaml("config/params.yaml")
 
 # ---- 1. Doc du lieu ----------------------------------------
-Dxt <- as.matrix(read.csv("data/processed/Dxt.csv", row.names = 1, check.names = FALSE))
-Ext <- as.matrix(read.csv("data/processed/Ext.csv", row.names = 1, check.names = FALSE))
+# Dung series "total" (ca hai gioi) lam mac dinh cho LC/RH/CBD chinh;
+# doi ten file (vd. Dxt_male.csv) neu fit rieng theo gioi tinh.
+Dxt <- as.matrix(read.csv("data/processed/Dxt_total.csv", row.names = 1, check.names = FALSE))
+Ext <- as.matrix(read.csv("data/processed/Ext_total.csv", row.names = 1, check.names = FALSE))
 ages  <- as.numeric(rownames(Dxt))
 years <- as.numeric(colnames(Dxt))
 
