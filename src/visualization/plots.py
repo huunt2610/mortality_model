@@ -7,11 +7,11 @@ from src.config import FIGURES
 
 def _save(fig, name: str) -> None:
     FIGURES.mkdir(parents=True, exist_ok=True)
-    fig.savefig(FIGURES / f"{name}.png", dpi=300, bbox_inches="tight")
+    fig.savefig(FIGURES / f"{name}.pdf", dpi=300, bbox_inches="tight")
 
 
 def plot_log_mx_by_age(mx: pd.DataFrame, years: list[int], name: str = "log_mx_by_age"):
-    """log m_x theo tuổi, mỗi đường một năm — hình mở đầu chương EDA."""
+    """log m_x theo tuổi, mỗi đường một năm."""
     fig, ax = plt.subplots(figsize=(8, 5))
     for y in years:
         ax.plot(mx.index, np.log(mx[y]), label=str(y))

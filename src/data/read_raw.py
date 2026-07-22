@@ -3,7 +3,7 @@
 UN WPP xuất file Excel với vài chục dòng metadata phía trên bảng dữ liệu thật,
 và tên cột đầy đủ (vd. "Central death rate m(x,n)") có thể lệch nhẹ giữa các
 kỳ revision. Thay vì cố định vị trí dòng/cột, ta dò dòng tiêu đề bằng cách tìm
-dòng khớp nhiều nhất các nhãn cột mong đợi, rồi khớp cột theo mẫu regex —
+dòng khớp nhiều nhất các nhãn cột mong đợi, rồi khớp cột theo mẫu regex -
 chịu được thay đổi nhỏ về định dạng giữa các lần UN cập nhật.
 """
 from __future__ import annotations
@@ -34,7 +34,7 @@ def _find_header_row(raw: pd.DataFrame, max_scan: int = 30, min_hits: int = 4) -
             return i
     raise ValueError(
         "Không tìm thấy dòng tiêu đề trong file UN WPP trong "
-        f"{max_scan} dòng đầu — kiểm tra lại định dạng file (sheet, số dòng metadata)."
+        f"{max_scan} dòng đầu - kiểm tra lại định dạng file (sheet, số dòng metadata)."
     )
 
 
@@ -50,7 +50,7 @@ def read_wpp_single_age_life_table(path: Path) -> pd.DataFrame:
 
     Trả về long-format: cột year, age, mx, exposure.
 
-    `exposure` lấy xấp xỉ từ L(x,n) — person-years lived trong bảng sống —
+    `exposure` lấy xấp xỉ từ L(x,n) - person-years lived trong bảng sống -
     vì file life table (F06) của UN không tách deaths/exposure dân số thực
     (nằm ở file Population riêng, ngoài phạm vi ở đây). Do đó
     Dxt = mx * Ext là MỘT GIẢ ĐỊNH cần ghi rõ trong luận văn, không phải số
