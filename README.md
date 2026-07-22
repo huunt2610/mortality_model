@@ -1,6 +1,6 @@
 # Mortality Forecasting Models for Vietnam
 
-Luận văn Thạc sĩ — Lý thuyết Xác suất và Thống kê Toán học, ĐH KHTN, ĐHQG-HCM.
+Luận văn Thạc sĩ - Lý thuyết Xác suất và Thống kê Toán học, ĐH KHTN, ĐHQG-HCM.
 
 Xây dựng, hiệu chỉnh và so sánh các mô hình tử vong ngẫu nhiên (Lee-Carter,
 Renshaw-Haberman, Cairns-Blake-Dowd) trên dữ liệu Việt Nam, và ứng dụng vào
@@ -10,9 +10,9 @@ quản trị rủi ro trong doanh nghiệp bảo hiểm nhân thọ.
 
 | Việc | Công cụ |
 |---|---|
-| Thu thập, tiền xử lý dữ liệu, EDA, vẽ hình | Python (pandas, matplotlib) — `src/`, `notebooks/` |
-| Fit mô hình LC / RH / CBD, dự báo, mô phỏng | R (**StMoMo**, demography, forecast) — `R/` |
-| Đánh giá, backtest, tổng hợp kết quả | Python + R — `src/evaluation/`, `notebooks/07` |
+| Thu thập, tiền xử lý dữ liệu, EDA, vẽ hình | Python (pandas, matplotlib) - `src/`, `notebooks/` |
+| Fit mô hình LC / RH / CBD, dự báo, mô phỏng | R (**StMoMo**, demography, forecast) - `R/` |
+| Đánh giá, backtest, tổng hợp kết quả | Python + R - `src/evaluation/`, `notebooks/07` |
 
 R fit mô hình rồi export kết quả (tham số, dự báo, residuals) ra CSV trong
 `data/processed/` và `models/`; Python đọc lại để phân tích và vẽ hình luận văn.
@@ -22,12 +22,12 @@ R fit mô hình rồi export kết quả (tham số, dự báo, residuals) ra CS
 ```
 vn-mortality-models/
 ├── config/
-│   └── params.yaml          # Phạm vi tuổi, năm, split train/test — MỘT nơi duy nhất
+│   └── params.yaml          # Phạm vi tuổi, năm, split train/test - MỘT nơi duy nhất
 ├── data/
 │   ├── raw/                 # Dữ liệu gốc tải về, KHÔNG BAO GIỜ sửa tay (không commit)
 │   ├── external/            # Tài liệu tham chiếu: bảng sống GSO, metadata nguồn
 │   ├── interim/             # Dữ liệu trung gian đang xử lý
-│   └── processed/           # Ma trận Dxt, Ext sạch — input cho mô hình
+│   └── processed/           # Ma trận Dxt, Ext sạch - input cho mô hình
 ├── notebooks/               # Đánh số theo thứ tự pipeline, mỗi notebook ≈ 1 mục luận văn
 │   ├── 01_data_collection.ipynb
 │   ├── 02_eda_vietnam_mortality.ipynb
@@ -67,16 +67,16 @@ vn-mortality-models/
 3. **Notebook để khám phá và trình bày; logic tái sử dụng nằm trong `src/` và `R/`.**
    Notebook chỉ gọi hàm, không chứa hàm dài.
 4. **Mỗi hình trong luận văn sinh ra từ một hàm** trong `src/visualization/`,
-   lưu vào `reports/figures/` — sửa được và chạy lại được đến phút chót.
+   lưu vào `reports/figures/` - sửa được và chạy lại được đến phút chót.
 5. Commit thường xuyên, message rõ ràng: `feat: fit RH model with beta0=1 constraint`.
 
 ## Nguồn dữ liệu
 
-- **UN World Population Prospects (WPP)** — bảng sống tuổi đơn, 1950–nay, nguồn chính
+- **UN World Population Prospects (WPP)** - bảng sống tuổi đơn, 1950–nay, nguồn chính
   (lưu ý trong luận văn: dữ liệu đã được UN làm trơn bằng mô hình).
-- **GSO Việt Nam** — bảng sống rút gọn từ Tổng điều tra 2009/2019, điều tra giữa kỳ,
+- **GSO Việt Nam** - bảng sống rút gọn từ Tổng điều tra 2009/2019, điều tra giữa kỳ,
   Niên giám Thống kê: dùng để đối chiếu kiểm chứng.
-- **WHO Mortality Database** — dữ liệu VN thưa, chỉ tham khảo.
+- **WHO Mortality Database** - dữ liệu VN thưa, chỉ tham khảo.
 - Việt Nam **không có** trong Human Mortality Database.
 
 ## Khởi động nhanh
