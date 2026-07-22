@@ -79,6 +79,32 @@ vn-mortality-models/
 - **WHO Mortality Database** - dữ liệu VN thưa, chỉ tham khảo.
 - Việt Nam **không có** trong Human Mortality Database.
 
+## Ký hiệu toán học
+
+Quy ước ký hiệu dùng xuyên suốt code (`src/`, `R/`) và các notebook. `x` luôn là
+tuổi, `t` luôn là năm (thời gian lịch), `c = t - x` là năm sinh (cohort).
+
+| Ký hiệu | Ý nghĩa | Ghi chú |
+|---|---|---|
+| `x` | Tuổi | 0–100 (tuổi đơn) |
+| `t` | Năm lịch (calendar year) | 1955–2023 (`config/params.yaml`) |
+| `c = t − x` | Năm sinh / thế hệ (cohort) | dùng cho hiệu ứng thế hệ trong RH |
+| `m(x,t)`, `mx` | Tỷ suất tử vong trung tâm (central death rate) ở tuổi `x`, năm `t` | `mx = Dxt / Ext`; các mô hình fit trên `log m(x,t)` |
+| `q(x,t)`, `qx` | Xác suất một người tuổi `x` chết trước khi tròn `x+1`, trong năm `t` | dùng cho CBD (`logit qxt`) và khi số hoá bảng GSO (`mx ≈ -log(1-qx)`) |
+| `D(x,t)`, `Dxt` | Số ca tử vong (deaths) ở tuổi `x`, năm `t` | trong project = `mx × Ext` (**giả định**, vì file UN WPP F06 không tách deaths thực — xem `src/data/read_raw.py`) |
+| `E(x,t)`, `Ext` | Exposure trung tâm (person-years at risk) ở tuổi `x`, năm `t` | xấp xỉ từ `L(x,n)` (person-years lived) trong bảng sống UN WPP |
+| `e(x,t)`, `ex` | Kỳ vọng sống còn lại (life expectancy) ở tuổi `x`, năm `t` | `e0` = kỳ vọng sống khi sinh, `e60` = kỳ vọng sống ở tuổi 60 |
+| `ax` | Tham số Lee-Carter: mức `log m(x,t)` trung bình theo tuổi, không đổi theo `t` | `04_lee_carter.ipynb` |
+| `bx` | Tham số Lee-Carter: độ nhạy của `log m(x,t)` theo tuổi trước biến động `kt` | `04_lee_carter.ipynb` |
+| `kt` | Chỉ số tử vong theo thời gian (period effect) của Lee-Carter | dự báo bằng random walk with drift (RWD) |
+| `bx0, bx1` | Renshaw-Haberman: `log m(x,t) = ax + bx1·kt + bx0·γ(t−x)` | bản đơn giản hoá trong `R/02_fit_models.R` cố định `bx0 = 1` (khuyến nghị Haberman & Renshaw 2011, ổn định hơn) |
+| `γc`, `gc` | Hiệu ứng thế hệ (cohort effect) tại năm sinh `c = t−x` trong Renshaw-Haberman | dự báo bằng ARIMA; `05_renshaw_haberman.ipynb` |
+| `kt1, kt2` | Hai chỉ số thời gian của Cairns-Blake-Dowd: `logit q(x,t) = kt1 + kt2·(x − x̄)` | `kt1` = mức (level), `kt2` = độ dốc theo tuổi (slope); fit tuổi 55–90; `06_cbd.ipynb` |
+| `AIC`, `BIC` | Information criteria đánh giá fit trong mẫu, càng thấp càng tốt | `BIC` phạt số tham số nặng hơn `AIC` |
+| `RMSE`, `log-RMSE` | Root Mean Squared Error trên `mx` hoặc `log mx` | `src/evaluation/metrics.py` |
+| `MAPE` | Mean Absolute Percentage Error | `src/evaluation/metrics.py` |
+| Poisson deviance | `2·Σ[D·log(D/D̂) − (D − D̂)]` | đo độ lệch giữa số tử vong quan sát `D` và dự báo `D̂`, giả định `D ~ Poisson`; `src/evaluation/metrics.py` |
+
 ## Khởi động nhanh
 
 ```bash
