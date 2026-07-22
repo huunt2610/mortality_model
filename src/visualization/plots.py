@@ -8,7 +8,6 @@ from src.config import FIGURES
 def _save(fig, name: str) -> None:
     FIGURES.mkdir(parents=True, exist_ok=True)
     fig.savefig(FIGURES / f"{name}.png", dpi=300, bbox_inches="tight")
-    plt.close(fig)
 
 
 def plot_log_mx_by_age(mx: pd.DataFrame, years: list[int], name: str = "log_mx_by_age"):

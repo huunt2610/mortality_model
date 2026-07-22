@@ -56,32 +56,41 @@ def read_wpp_single_age_life_table(path: Path) -> pd.DataFrame:
     Dxt = mx * Ext là MỘT GIẢ ĐỊNH cần ghi rõ trong luận văn, không phải số
     ca tử vong thực tế đếm được.
     """
-    try:
-        raw = pd.read_excel(path, sheet_name="Estimates", header=None)
-    except ValueError:
-        raw = pd.read_excel(path, sheet_name=0, header=None)
+    all_sheets = pd.ExcelFile(path).sheet_names
+    estimate_sheets = [s for s in all_sheets if re.match(r"estimates", s, re.I)]
+    if not estimate_sheets:
+        estimate_sheets = [all_sheets[0]]
 
-    header_row = _find_header_row(raw)
-    df = raw.iloc[header_row + 1:].copy()
-    df.columns = raw.iloc[header_row]
-    df = df.reset_index(drop=True)
+    parts = []
+    for sheet in estimate_sheets:
+        raw = pd.read_excel(path, sheet_name=sheet, header=None)
 
-    col_iso3 = _match_column(df.columns, _HEADER_HINTS["iso3"])
-    col_year = _match_column(df.columns, _HEADER_HINTS["year"])
-    col_age = _match_column(df.columns, _HEADER_HINTS["age"])
-    col_mx = _match_column(df.columns, _HEADER_HINTS["mx"])
-    col_exposure = _match_column(df.columns, _HEADER_HINTS["exposure"])
+        header_row = _find_header_row(raw)
+        df = raw.iloc[header_row + 1:].copy()
+        df.columns = raw.iloc[header_row]
+        df = df.reset_index(drop=True)
 
-    vn = df[df[col_iso3].astype(str).str.upper() == ISO3_VIETNAM].copy()
-    if vn.empty:
+        col_iso3 = _match_column(df.columns, _HEADER_HINTS["iso3"])
+        col_year = _match_column(df.columns, _HEADER_HINTS["year"])
+        col_age = _match_column(df.columns, _HEADER_HINTS["age"])
+        col_mx = _match_column(df.columns, _HEADER_HINTS["mx"])
+        col_exposure = _match_column(df.columns, _HEADER_HINTS["exposure"])
+
+        vn = df[df[col_iso3].astype(str).str.upper() == ISO3_VIETNAM].copy()
+        if vn.empty:
+            continue
+
+        parts.append(pd.DataFrame({
+            "year": pd.to_numeric(vn[col_year], errors="coerce"),
+            "age": pd.to_numeric(vn[col_age], errors="coerce"),
+            "mx": pd.to_numeric(vn[col_mx], errors="coerce"),
+            "exposure": pd.to_numeric(vn[col_exposure], errors="coerce"),
+        }).dropna())
+
+    if not parts:
         raise ValueError(f"Không tìm thấy dữ liệu Việt Nam (ISO3={ISO3_VIETNAM}) trong {path.name}")
 
-    out = pd.DataFrame({
-        "year": pd.to_numeric(vn[col_year], errors="coerce"),
-        "age": pd.to_numeric(vn[col_age], errors="coerce"),
-        "mx": pd.to_numeric(vn[col_mx], errors="coerce"),
-        "exposure": pd.to_numeric(vn[col_exposure], errors="coerce"),
-    }).dropna()
+    out = pd.concat(parts, ignore_index=True)
     out["year"] = out["year"].astype(int)
     out["age"] = out["age"].astype(int)
     return out.sort_values(["year", "age"]).reset_index(drop=True)
