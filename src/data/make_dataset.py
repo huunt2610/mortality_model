@@ -32,7 +32,7 @@ def build_matrices(df: pd.DataFrame, y0: int, y1: int) -> tuple[pd.DataFrame, pd
     Ext = Ext[sorted(Ext.columns)]
     mx = mx[sorted(mx.columns)]
     Dxt = (mx * Ext).round(2)
-    return Dxt, Ext
+    return Dxt, Ext, mx
 
 
 def main() -> None:
@@ -50,11 +50,12 @@ def main() -> None:
                 "(xem data/external/SOURCES.md)."
             )
         df = read_wpp_single_age_life_table(path)
-        Dxt, Ext = build_matrices(df, y0, y1)
-        validate_matrices(Dxt, Ext)
+        Dxt, Ext, mx = build_matrices(df, y0, y1)
+        validate_matrices(Dxt, Ext, mx)
 
         Dxt.to_csv(DATA_PROCESSED / f"Dxt_{sex}.csv")
         Ext.to_csv(DATA_PROCESSED / f"Ext_{sex}.csv")
+        mx.to_csv(DATA_PROCESSED / f"mx_{sex}.csv")
         print(f"[ok] {sex}: {Dxt.shape[0]} tuổi x {Dxt.shape[1]} năm -> data/processed/*_{sex}.csv")
 
 

@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 
-def validate_matrices(Dxt: pd.DataFrame, Ext: pd.DataFrame) -> None:
+def validate_matrices(Dxt: pd.DataFrame, Ext: pd.DataFrame, mx: pd.DataFrame) -> None:
     """Raise ValueError nếu Dxt/Ext không hợp lệ. Không trả gì nếu ổn."""
     if Dxt.shape != Ext.shape:
         raise ValueError(f"Dxt {Dxt.shape} và Ext {Ext.shape} không cùng kích thước")
@@ -20,7 +20,7 @@ def validate_matrices(Dxt: pd.DataFrame, Ext: pd.DataFrame) -> None:
     if (Ext.to_numpy() <= 0).any():
         raise ValueError("Ext có giá trị <= 0 — exposure phải dương")
 
-    mx = (Dxt / Ext).to_numpy()
+    mx = mx.to_numpy()
     if np.isnan(mx).any():
         raise ValueError("mx có NaN sau khi dựng ma trận (kiểm tra lệch chỉ số age/year)")
     if (mx < 0).any() or (mx > 1.5).any():

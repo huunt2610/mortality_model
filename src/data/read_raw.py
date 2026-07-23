@@ -45,16 +45,14 @@ def _match_column(columns: pd.Index, pattern: re.Pattern) -> str:
     raise KeyError(f"Không tìm thấy cột khớp mẫu {pattern.pattern!r} trong {list(columns)}")
 
 
-def read_wpp_single_age_life_table(path: Path) -> pd.DataFrame:
-    """Đọc 1 file bảng sống tuổi đơn UN WPP (1 giới tính), lọc riêng Việt Nam.
+def read_wpp_single_age_life_table(path: Path, iso3: str = ISO3_VIETNAM) -> pd.DataFrame:
+    """Đọc 1 file bảng sống tuổi đơn UN WPP (1 giới tính), lọc riêng theo `iso3`.
+
+    File gốc chứa toàn bộ các quốc gia/vùng lãnh thổ - `iso3` mặc định là Việt
+    Nam, nhưng có thể đổi (vd. "JPN", "KOR") để lấy dữ liệu so sánh mà không
+    cần tải thêm file.
 
     Trả về long-format: cột year, age, mx, exposure.
-
-    `exposure` lấy xấp xỉ từ L(x,n) - person-years lived trong bảng sống -
-    vì file life table (F06) của UN không tách deaths/exposure dân số thực
-    (nằm ở file Population riêng, ngoài phạm vi ở đây). Do đó
-    Dxt = mx * Ext là MỘT GIẢ ĐỊNH cần ghi rõ trong luận văn, không phải số
-    ca tử vong thực tế đếm được.
     """
     all_sheets = pd.ExcelFile(path).sheet_names
     estimate_sheets = [s for s in all_sheets if re.match(r"estimates", s, re.I)]
@@ -76,19 +74,19 @@ def read_wpp_single_age_life_table(path: Path) -> pd.DataFrame:
         col_mx = _match_column(df.columns, _HEADER_HINTS["mx"])
         col_exposure = _match_column(df.columns, _HEADER_HINTS["exposure"])
 
-        vn = df[df[col_iso3].astype(str).str.upper() == ISO3_VIETNAM].copy()
-        if vn.empty:
+        sub = df[df[col_iso3].astype(str).str.upper() == iso3.upper()].copy()
+        if sub.empty:
             continue
 
         parts.append(pd.DataFrame({
-            "year": pd.to_numeric(vn[col_year], errors="coerce"),
-            "age": pd.to_numeric(vn[col_age], errors="coerce"),
-            "mx": pd.to_numeric(vn[col_mx], errors="coerce"),
-            "exposure": pd.to_numeric(vn[col_exposure], errors="coerce"),
+            "year": pd.to_numeric(sub[col_year], errors="coerce"),
+            "age": pd.to_numeric(sub[col_age], errors="coerce"),
+            "mx": pd.to_numeric(sub[col_mx], errors="coerce"),
+            "exposure": pd.to_numeric(sub[col_exposure], errors="coerce"),
         }).dropna())
 
     if not parts:
-        raise ValueError(f"Không tìm thấy dữ liệu Việt Nam (ISO3={ISO3_VIETNAM}) trong {path.name}")
+        raise ValueError(f"Không tìm thấy dữ liệu ISO3={iso3} trong {path.name}")
 
     out = pd.concat(parts, ignore_index=True)
     out["year"] = out["year"].astype(int)
@@ -99,9 +97,6 @@ def read_wpp_single_age_life_table(path: Path) -> pd.DataFrame:
 def read_gso_life_table(path: Path) -> pd.DataFrame:
     """Đọc bảng sống GSO đã số hoá thủ công từ báo cáo TĐT (chỉ dùng đối chiếu).
 
-    Kỳ vọng CSV tối thiểu có cột `age`, `sex`, và `mx` hoặc `qx`. Dữ liệu này
-    KHÔNG dùng để fit mô hình (chuỗi năm quá ngắn/thưa), chỉ để kiểm chứng
-    chéo với UN WPP ở notebook EDA.
     """
     df = pd.read_csv(path)
     required = {"age", "sex"}
