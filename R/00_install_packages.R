@@ -5,6 +5,7 @@ pkgs <- c("StMoMo",            # LC, RH, CBD, APC, M7 — cong cu chinh
           "mgcv",              # P-splines lam tron (thay MortalitySmooth)
           "fanplot",           # fan chart cho du bao
           "lifecontingencies", # tinh phi bao hiem, annuity tu bang song
-          "yaml")
+          "yaml",
+          "lintr")             # kiem tra style code R
 install.packages(setdiff(pkgs, rownames(installed.packages())),
                  repos = "https://cloud.r-project.org")
