@@ -86,12 +86,58 @@ def plot_mx_country_comparison(mx_by_country: dict[str, pd.DataFrame], year: int
     _save(fig, name)
 
 
-def plot_residual_heatmap(res: pd.DataFrame, model: str):
+def plot_smoothing_comparison(mx_raw: pd.DataFrame, mx_smooth: pd.DataFrame, years: list[int],
+                               name: str = "smoothing_comparison"):
+    """So sánh log m(x,t) trước/sau làm trơn theo tuổi, nhiều năm mốc - mỗi năm 1 panel."""
+    fig, axes = plt.subplots(1, len(years), figsize=(4 * len(years), 5), sharey=True)
+    axes = np.atleast_1d(axes)
+    for ax, year in zip(axes, years):
+        ax.plot(mx_raw.index, np.log(mx_raw[year]), label="Gốc", color="tab:blue",
+                linewidth=2.5, alpha=0.5)
+        ax.plot(mx_smooth.index, np.log(mx_smooth[year]), label="Đã làm trơn", color="tab:orange",
+                linewidth=1.2, linestyle="--")
+        ax.set_xlabel("Tuổi x"); ax.set_title(str(year))
+    axes[0].set_ylabel("log m(x,t)")
+    axes[0].legend()
+    _save(fig, name)
+
+
+def plot_named_series_by_age(series: dict[str, pd.Series], ylabel: str, name: str,
+                              ref_line: float | None = None):
+    """Vẽ nhiều chuỗi (theo tuổi) được đặt tên tuỳ ý trên cùng 1 trục - dùng chung cho
+    so sánh nguồn dữ liệu (GSO/WPP), tỷ số theo tuổi, v.v."""
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for label, s in series.items():
+        ax.plot(s.index, s.values, label=label)
+    if ref_line is not None:
+        ax.axhline(ref_line, color="grey", linewidth=0.8, linestyle="--")
+    ax.set_xlabel("Tuổi x"); ax.set_ylabel(ylabel); ax.legend()
+    _save(fig, name)
+
+
+def plot_cohort_mean_residual(cohort_resid: pd.Series, name: str = "cohort_mean_residual",
+                               periods: dict[str, tuple[int, int]] | None = None):
+    """Residual trung bình theo năm sinh (cohort) - một vệt trơn dài hạn khác về bản
+    chất với việc "nhiễu" ngẫu nhiên qua từng cohort riêng lẻ. `periods` (tuỳ chọn):
+    tô nền các giai đoạn lịch sử để đối chiếu trực quan."""
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.plot(cohort_resid.index, cohort_resid.values)
+    ax.axhline(0, color="grey", linewidth=0.8)
+    if periods:
+        for label, (start, end) in periods.items():
+            ax.axvspan(start, end, alpha=0.12, color="red")
+            ax.annotate(label, xy=((start + end) / 2, ax.get_ylim()[1]), ha="center", va="top",
+                        fontsize=8, rotation=90)
+    ax.set_xlabel("Năm sinh (cohort)"); ax.set_ylabel("Residual trung bình log m(x,t)")
+    _save(fig, name)
+
+
+def plot_residual_heatmap(res: pd.DataFrame, model: str, ylabel: str = "Deviance residual"):
     """Heatmap residuals — nếu còn vệt chéo nghĩa là mô hình bỏ sót cohort effect."""
     fig, ax = plt.subplots(figsize=(9, 5))
     v = np.nanmax(np.abs(res.values))
     im = ax.pcolormesh(res.columns.astype(int), res.index.astype(int),
                        res.values, cmap="RdBu_r", vmin=-v, vmax=v)
-    fig.colorbar(im, ax=ax, label="Deviance residual")
+    fig.colorbar(im, ax=ax, label=ylabel)
     ax.set_xlabel("Năm t"); ax.set_ylabel("Tuổi x"); ax.set_title(model)
     _save(fig, f"residuals_{model}")
