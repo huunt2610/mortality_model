@@ -132,6 +132,18 @@ def plot_cohort_mean_residual(cohort_resid: pd.Series, name: str = "cohort_mean_
     _save(fig, name)
 
 
+def plot_lc_params(params_age: pd.DataFrame, kt: pd.Series, name: str = "lc_params"):
+    """3 panel tham số Lee-Carter chuẩn: ax(x), bx(x), kt(t)."""
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
+    axes[0].plot(params_age["age"], params_age["ax"])
+    axes[0].set_xlabel("Tuổi x"); axes[0].set_ylabel("ax"); axes[0].set_title("ax(x)")
+    axes[1].plot(params_age["age"], params_age["bx"])
+    axes[1].set_xlabel("Tuổi x"); axes[1].set_ylabel("bx"); axes[1].set_title("bx(x)")
+    axes[2].plot(kt.index, kt.values)
+    axes[2].set_xlabel("Năm t"); axes[2].set_ylabel("kt"); axes[2].set_title("kt(t)")
+    _save(fig, name)
+
+
 def plot_residual_heatmap(res: pd.DataFrame, model: str, ylabel: str = "Deviance residual"):
     """Heatmap residuals — nếu còn vệt chéo nghĩa là mô hình bỏ sót cohort effect."""
     fig, ax = plt.subplots(figsize=(9, 5))

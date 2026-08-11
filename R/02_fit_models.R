@@ -25,34 +25,53 @@ RH  <- rh(link = "log", cohortAgeFun = "1", approxConst = TRUE)
 CBD <- cbd(link = "logit")
 
 # ---- 3. Fit ------------------------------------------------
-ages_lc  <- cfg$ages$lc_rh$min:cfg$ages$lc_rh$max
-ages_cbd <- cfg$ages$cbd$min:cfg$ages$cbd$max
+ages_lc   <- cfg$ages$lc_rh$min:cfg$ages$lc_rh$max
+ages_cbd  <- cfg$ages$cbd$min:cfg$ages$cbd$max
+# Loai giai doan chien tranh/bien dong lich su (truoc 1980) khoi uoc luong
+# tham so - xem ghi chu trong config/params.yaml (fitting.years)
+years_fit <- cfg$fitting$years$start:cfg$fitting$years$end
 
 LCfit <- fit(LC, Dxt = Dxt, Ext = Ext, ages = ages, years = years,
-             ages.fit = ages_lc)
+             ages.fit = ages_lc, years.fit = years_fit)
 
 # RH noi tieng kho hoi tu: khoi tao tu ket qua LC, tang so vong lap.
 RHfit <- fit(RH, Dxt = Dxt, Ext = Ext, ages = ages, years = years,
-             ages.fit = ages_lc,
+             ages.fit = ages_lc, years.fit = years_fit,
              start.ax = LCfit$ax, start.bx = LCfit$bx, start.kt = LCfit$kt,
              iterMax  = 1e5)
 if (!RHfit$conv) warning("RH khong hoi tu — thu doi starting values hoac thu hep pham vi tuoi/nam")
 
 # CBD dung xac suat tu vong qxt (link logit) tren nhom tuoi gia
 CBDfit <- fit(CBD, Dxt = Dxt, Ext = Ext, ages = ages, years = years,
-              ages.fit = ages_cbd)
+              ages.fit = ages_cbd, years.fit = years_fit)
 
 # ---- 4. Luu ket qua ----------------------------------------
 saveRDS(LCfit,  "models/lc_fit.rds")
 saveRDS(RHfit,  "models/rh_fit.rds")
 saveRDS(CBDfit, "models/cbd_fit.rds")
 
+# StMoMo tra ve bx/kt dang ma tran voi dimname (vd. "1"), khien data.frame()
+# ghi de ten cot argument bang dimname do (thanh "X1" sau make.names) - dat
+# lai ten cot tuong minh truoc khi ghi CSV.
+name_cols <- function(mat, base) {
+  colnames(mat) <- if (ncol(mat) == 1) base else paste0(base, seq_len(ncol(mat)))
+  mat
+}
+
 export_params <- function(f, name) {
-  if (!is.null(f$ax)) write.csv(data.frame(age = f$ages, ax = f$ax, bx = f$bx),
-                                sprintf("data/processed/params_%s_age.csv", name), row.names = FALSE)
-  write.csv(data.frame(year = f$years, t(f$kt)),
+  if (!is.null(f$ax)) {
+    bx_mat <- name_cols(as.matrix(f$bx), "bx")
+    write.csv(data.frame(age = f$ages, ax = as.vector(f$ax), bx_mat, check.names = FALSE),
+              sprintf("data/processed/params_%s_age.csv", name), row.names = FALSE)
+  } else if (!is.null(f$bx)) {
+    bx_mat <- name_cols(as.matrix(f$bx), "bx")
+    write.csv(data.frame(age = f$ages, bx_mat, check.names = FALSE),
+              sprintf("data/processed/params_%s_age.csv", name), row.names = FALSE)
+  }
+  kt_mat <- name_cols(t(as.matrix(f$kt)), "kt")
+  write.csv(data.frame(year = f$years, kt_mat, check.names = FALSE),
             sprintf("data/processed/params_%s_kt.csv", name), row.names = FALSE)
-  if (!is.null(f$gc)) write.csv(data.frame(cohort = f$cohorts, gc = f$gc),
+  if (!is.null(f$gc)) write.csv(data.frame(cohort = f$cohorts, gc = as.vector(f$gc)),
                                 sprintf("data/processed/params_%s_gc.csv", name), row.names = FALSE)
 }
 export_params(LCfit, "lc"); export_params(RHfit, "rh"); export_params(CBDfit, "cbd")

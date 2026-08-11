@@ -3,21 +3,28 @@ data:
   source: "UN_WPP_2024"          # nguồn chính
   sexes: ["male", "female", "total"]
   years:
-    start: 1955
-    end: 2023
+    start: 1955                  # phạm vi thu thập/EDA đầy đủ (notebook 01, 02) - KHÔNG
+    end: 2023                    # dùng trực tiếp để fit mô hình, xem `fitting.years` bên dưới
 
 ages:
   lc_rh:                          # Lee-Carter & Renshaw-Haberman
     min: 0
-    max: 90
+    max: 90                       # tuổi >90 loại khỏi fitting (mẫu/exposure quá nhỏ, mx
+                                   # biến động mạnh) - kéo dài bảng sống bằng Kannisto/Thatcher
+                                   # ở bước ứng dụng (notebook 08), không graduate/fit trực tiếp
   cbd:                            # CBD chỉ phù hợp tuổi già
     min: 55
     max: 90
 
+fitting:
+  years:
+    start: 1980                   # loại giai đoạn chiến tranh/biến động lịch sử 1950-1979
+    end: 2010                     # khỏi ước lượng ax/bx/kt/gc chính thức (notebook 04-06)
+
 backtest:
   splits:
-    - {train_end: 2010, test_end: 2023}   # split chính
-    - {train_end: 2005, test_end: 2015}   # kiểm tra độ ổn định
+    - {train_start: 1980, train_end: 2010, test_end: 2021}   # split chính - khớp fitting.years
+    - {train_start: 1980, train_end: 2005, test_end: 2015}   # kiểm tra độ ổn định
   exclude_covid_years: [2020, 2021, 2022] # báo cáo kết quả cả có và không có
 
 forecast:
