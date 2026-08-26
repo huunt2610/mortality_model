@@ -144,6 +144,42 @@ def plot_lc_params(params_age: pd.DataFrame, kt: pd.Series, name: str = "lc_para
     _save(fig, name)
 
 
+def plot_breakpoint_search(sse_by_bp: dict[int, float], best_bp: int,
+                            name: str = "breakpoint_search"):
+    """SSE (tổng sai số bình phương) của fit 2 đoạn theo từng năm ứng viên làm điểm
+    gãy - xác nhận trực quan năm được chọn (`best_bp`) là điểm cực tiểu rõ ràng của
+    toàn bộ dải ứng viên, không phải một lựa chọn đơn lẻ khó kiểm chứng."""
+    years_bp = sorted(sse_by_bp)
+    sse_vals = [sse_by_bp[y] for y in years_bp]
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.plot(years_bp, sse_vals, color="tab:blue")
+    ax.axvline(best_bp, color="tab:red", linestyle="--", linewidth=1,
+               label=f"Điểm gãy tốt nhất: {best_bp}")
+    ax.set_xlabel("Năm ứng viên làm điểm gãy")
+    ax.set_ylabel("Tổng sai số bình phương (SSE) của fit 2 đoạn")
+    ax.legend()
+    _save(fig, name)
+
+
+def plot_structural_break(years: np.ndarray, values: np.ndarray, breakpoint: int,
+                           ylabel: str, name: str = "structural_break"):
+    """Chuỗi thời gian kèm 2 đường hồi quy tuyến tính riêng biệt trước/sau điểm gãy -
+    minh hoạ trực quan kết quả kiểm định Chow (thay đổi độ dốc rõ rệt qua điểm gãy)."""
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.plot(years, values, "o", color="tab:blue", alpha=0.5, markersize=4, label="Dữ liệu")
+
+    left = years <= breakpoint
+    right = years > breakpoint
+    for mask, label in [(left, f"Trước {breakpoint}"), (right, f"Từ {breakpoint + 1}")]:
+        p = np.polyfit(years[mask], values[mask], 1)
+        ax.plot(years[mask], np.polyval(p, years[mask]), linewidth=2,
+                label=f"{label} (dốc={p[0]:+.4f}/năm)")
+
+    ax.axvline(breakpoint, color="grey", linestyle="--", linewidth=1)
+    ax.set_xlabel("Năm t"); ax.set_ylabel(ylabel); ax.legend()
+    _save(fig, name)
+
+
 def plot_residual_heatmap(res: pd.DataFrame, model: str, ylabel: str = "Deviance residual"):
     """Heatmap residuals — nếu còn vệt chéo nghĩa là mô hình bỏ sót cohort effect."""
     fig, ax = plt.subplots(figsize=(9, 5))

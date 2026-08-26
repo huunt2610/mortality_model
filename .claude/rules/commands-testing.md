@@ -11,8 +11,11 @@ Rscript R/00_install_packages.R
 # Pipeline dữ liệu
 python -m src.data.make_dataset
 
-# Fit mô hình, rồi forecast, rồi backtest (mỗi bước đọc output của bước trước)
-Rscript R/02_fit_models.R
+# Fit từng mô hình (đúng thứ tự - RH đọc lc_fit.rds làm starting values), rồi
+# forecast, rồi backtest (mỗi bước đọc output của bước trước)
+Rscript R/02a_fit_lc.R
+Rscript R/02b_fit_rh.R
+Rscript R/02c_fit_cbd.R
 Rscript R/03_forecast.R
 Rscript R/04_backtest.R
 

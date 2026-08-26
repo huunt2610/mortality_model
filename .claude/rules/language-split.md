@@ -5,7 +5,20 @@
 - Hai phía chỉ tương tác **qua filesystem** (file CSV trong `data/processed/` và
   `models/`), không chạy in-process — không có cầu nối reticulate/rpy2.
 - Notebook chỉ nên gọi hàm từ `src/`/`R/`, không chứa logic dài bên trong.
-- **Notebook 03–08 chỉ là placeholder/stub** — chỉ có notebook 01 (thu thập dữ liệu) và
-  02 (EDA) có nội dung thật. Đừng cho rằng các notebook sau đã phản ánh phân tích đang
-  hoạt động. Điều này độc lập với cách đánh số `R/01`–`04` bên dưới — các script R đã
-  được cài đặt đầy đủ (xem `r-pipeline.md`).
+- **Notebook 01–04 đã có nội dung thật** (01 thu thập dữ liệu, 02 EDA, 03 làm trơn/graduation,
+  04 Lee-Carter); **05–08 vẫn chỉ là placeholder/stub**. Đừng cho rằng notebook 05-08 đã phản
+  ánh phân tích đang hoạt động. Điều này độc lập với cách đánh số `R/01`–`04` bên dưới — các
+  script R đã được cài đặt đầy đủ (xem `r-pipeline.md`).
+- **Cell output của notebook không tự đồng bộ khi upstream đổi.** Notebook 04 đọc
+  `data/processed/params_lc_*.csv`/`residuals_lc.csv` (ghi bởi `R/02a_fit_lc.R`) — nếu
+  `R/02a_fit_lc.R` hoặc `config/params.yaml::fitting.years` đổi mà không Run All + lưu lại
+  notebook, cell markdown "Nhận xét" sẽ trích dẫn số liệu cũ trong khi cell code phía trên đã in
+  ra số liệu mới, gây mâu thuẫn ngay trong chính notebook (từng xảy ra thật, xem
+  `reports/nhat_ky_nghien_cuu.md`, mục 2026-08-26). Trước khi trích số liệu từ bất kỳ notebook
+  nào vào luận văn, kiểm tra thời điểm sửa gần nhất của notebook so với các file CSV nó đọc.
+- **Notebook nhiều output ảnh (PNG nhúng base64) có thể vượt giới hạn token của tool Read** —
+  từng gặp với `notebooks/02_eda_vietnam_mortality.ipynb` (882KB+, 14 ảnh). Khi Read báo lỗi
+  "exceeds maximum allowed tokens" kể cả với `offset`/`limit`, sửa notebook bằng script Python
+  đọc/ghi JSON trực tiếp (`json.load`/`json.dump`, giữ `indent=1`, `ensure_ascii=False` khớp
+  định dạng gốc do Jupyter lưu), rồi validate bằng `nbformat.validate()` — không dùng tool
+  NotebookEdit trong trường hợp này vì nó yêu cầu Read thành công trước.

@@ -1,0 +1,38 @@
+=== Cell 12 ===
+old_age_slope = {}
+for year in years_detail:
+    sub = np.log(mx_total.loc[60:90, year])
+    slope = np.polyfit(sub.index.values, sub.values, 1)[0]
+    old_age_slope[year] = round(slope, 4)
+
+old_age_slope = pd.Series(old_age_slope, name="độ dốc log-linear tuổi 60-90 (mỗi năm tuổi)").to_frame()
+old_age_slope.index.name = "năm"
+old_age_slope
+
+=== Cell 16 ===
+evidence_ages = [0, 1, 5, 10, 30, 40, 50, 60, 70, 80, 90, 100]
+
+evidence_table = pd.DataFrame({
+    "Tuổi": evidence_ages,
+    "mx năm 1960": mx_total.loc[evidence_ages, 1960].values,
+    "mx năm 2020": mx_total.loc[evidence_ages, 2020].values,
+})
+
+evidence_table["% giảm mx (1960–2020)"] = (
+    (1 - evidence_table["mx năm 2020"] / evidence_table["mx năm 1960"]) * 100
+).round(1)
+
+evidence_table["mx năm 1960"] = evidence_table["mx năm 1960"].round(5)
+evidence_table["mx năm 2020"] = evidence_table["mx năm 2020"].round(5)
+
+display(evidence_table.set_index("Tuổi"))
+
+slope_table = pd.DataFrame.from_dict(
+    old_age_slope,
+    orient="index",
+    columns=["Độ dốc log(mx), tuổi 60–90"],
+)
+slope_table.index.name = "Năm"
+
+display(slope_table)
+

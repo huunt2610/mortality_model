@@ -71,13 +71,33 @@ def _bspline_basis(x: np.ndarray, n_basis: int, degree: int = 3) -> np.ndarray:
     return basis
 
 
+def _fit_pspline_2d(y_vec: np.ndarray, w_vec: np.ndarray, B: np.ndarray, n_basis_age: int,
+                     n_basis_year: int, lam_age: float, lam_year: float) -> np.ndarray:
+    """Giải hệ phương trình chuẩn (normal equations) của P-splines 2D có trọng
+    số cho vector hệ số basis `theta` - dùng chung bởi `smooth_mx_surface_2d`
+    và `cv_select_lambda_2d` (basis `B` không đổi giữa các lần gọi, chỉ trọng
+    số `w_vec` và `lam_age`/`lam_year` thay đổi khi dò lambda hoặc che ô CV).
+    """
+    Dx = np.diff(np.eye(n_basis_age), n=2, axis=0)
+    Dt = np.diff(np.eye(n_basis_year), n=2, axis=0)
+    penalty = (lam_age * np.kron(np.eye(n_basis_year), Dx.T @ Dx)
+               + lam_year * np.kron(Dt.T @ Dt, np.eye(n_basis_age)))
+
+    Bw = w_vec[:, None] * B
+    A = B.T @ Bw + penalty
+    b = B.T @ (w_vec * y_vec)
+    return np.linalg.solve(A, b)
+
+
 def smooth_mx_surface_2d(mx: pd.DataFrame, ext: pd.DataFrame, n_basis_age: int = 20,
                           n_basis_year: int = 15, lam_age: float = 100.0, lam_year: float = 100.0,
                           degree: int = 3) -> pd.DataFrame:
     """Làm trơn log m(x,t) đồng thời theo tuổi và năm bằng P-splines 2D (tensor
     product B-spline + phạt sai phân bậc 2 trên hệ số basis, có trọng số theo
     exposure) - khác WH 1D (`smooth_mx_surface`) ở chỗ ràng buộc độ mượt cả
-    theo chiều năm, không chỉ theo tuổi trong từng năm riêng lẻ.
+    theo chiều năm, không chỉ theo tuổi trong từng năm riêng lẻ. `lam_age`/
+    `lam_year` nên được chọn bằng `cv_select_lambda_2d` thay vì đoán tay - xem
+    notebook 03.
     """
     ages = mx.index.to_numpy(dtype=float)
     years = mx.columns.to_numpy(dtype=float)
@@ -90,18 +110,68 @@ def smooth_mx_surface_2d(mx: pd.DataFrame, ext: pd.DataFrame, n_basis_age: int =
     y_vec = np.log(mx).to_numpy().reshape(-1, order="F")
     w_vec = ext.to_numpy().reshape(-1, order="F")
 
-    Dx = np.diff(np.eye(n_basis_age), n=2, axis=0)
-    Dt = np.diff(np.eye(n_basis_year), n=2, axis=0)
-    penalty = (lam_age * np.kron(np.eye(n_basis_year), Dx.T @ Dx)
-               + lam_year * np.kron(Dt.T @ Dt, np.eye(n_basis_age)))
-
-    Bw = w_vec[:, None] * B
-    A = B.T @ Bw + penalty
-    b = B.T @ (w_vec * y_vec)
-    theta = np.linalg.solve(A, b)
+    theta = _fit_pspline_2d(y_vec, w_vec, B, n_basis_age, n_basis_year, lam_age, lam_year)
 
     smoothed = (B @ theta).reshape(n_age, n_year, order="F")
     return pd.DataFrame(np.exp(smoothed), index=mx.index, columns=mx.columns)
+
+
+def cv_select_lambda_2d(mx: pd.DataFrame, ext: pd.DataFrame, lam_grid: list[float],
+                         n_basis_age: int = 20, n_basis_year: int = 15, degree: int = 3,
+                         k_folds: int = 5, n_repeats: int = 10, random_state: int = 0) -> pd.DataFrame:
+    """K-fold cross-validation để chọn lambda cho P-splines 2D (`lam_age =
+    lam_year = lam`, một giá trị chung cho cả 2 chiều - khớp cách notebook 03
+    dùng `smooth_mx_surface_2d`; nếu cần dò 2 chiều độc lập, gọi `_fit_pspline_2d`
+    trực tiếp với lưới (lam_age, lam_year) riêng).
+
+    Với mỗi `lam` trong `lam_grid`: chia ngẫu nhiên các ô (tuổi, năm) có
+    exposure > 0 thành `k_folds` phần; lần lượt che trọng số (gán 0) của 1
+    phần khi fit trên phần còn lại, rồi đo weighted RMSE giữa log mx dự đoán
+    và log mx thật **chỉ trên phần bị che** (ngoài mẫu) - không đo trên tập
+    train, vì RSS trong mẫu luôn giảm đơn điệu khi lam giảm về 0 (overfit),
+    không dùng được để chọn lam. Trọng số khi tính RMSE là chính exposure gốc,
+    nhất quán với cách hàm fit đã weighted theo exposure.
+
+    Lặp lại toàn bộ k-fold `n_repeats` lần với các cách chia ngẫu nhiên khác
+    nhau rồi lấy trung bình - với lưới tuổi×năm cỡ trung bình của bài toán
+    này, đường cong CV của 1 lần chia dao động seed-to-seed đủ lớn để đổi cả
+    lam thắng cuộc (kiểm chứng thực nghiệm: 1 lần chia có thể chọn lam=100
+    hoặc lam=1000 tuỳ seed dù chênh lệch score rất nhỏ); lặp lại và lấy trung
+    bình cho ước lượng ổn định hơn, `cv_wrmse_std` đo chính độ dao động đó để
+    biết đường cong có đủ "nhọn" để tin tưởng vào lam tối ưu hay không.
+    """
+    ages = mx.index.to_numpy(dtype=float)
+    years = mx.columns.to_numpy(dtype=float)
+
+    Bx = _bspline_basis(ages, n_basis_age, degree)
+    Bt = _bspline_basis(years, n_basis_year, degree)
+    B = np.kron(Bt, Bx)
+
+    y_vec = np.log(mx).to_numpy().reshape(-1, order="F")
+    w_vec = ext.to_numpy().reshape(-1, order="F")
+    valid_idx = np.flatnonzero(w_vec > 0)  # ô w=0 không mang thông tin để CV
+
+    seed_seq = np.random.SeedSequence(random_state)
+    repeat_scores = {lam: [] for lam in lam_grid}
+    for child_seed in seed_seq.spawn(n_repeats):
+        rng = np.random.default_rng(child_seed)
+        shuffled = rng.permutation(valid_idx)
+        fold_of = np.arange(len(shuffled)) % k_folds
+        for lam in lam_grid:
+            se_sum, w_sum = 0.0, 0.0
+            for k in range(k_folds):
+                holdout = shuffled[fold_of == k]
+                w_train = w_vec.copy()
+                w_train[holdout] = 0.0
+                theta = _fit_pspline_2d(y_vec, w_train, B, n_basis_age, n_basis_year, lam, lam)
+                err = y_vec[holdout] - B[holdout] @ theta
+                se_sum += np.sum(w_vec[holdout] * err**2)
+                w_sum += np.sum(w_vec[holdout])
+            repeat_scores[lam].append(np.sqrt(se_sum / w_sum))
+
+    rows = [{"lam": lam, "cv_wrmse_log_mx": np.mean(scores), "cv_wrmse_std": np.std(scores)}
+            for lam, scores in repeat_scores.items()]
+    return pd.DataFrame(rows).set_index("lam")
 
 
 def graduate_abridged_mx(df_abridged: pd.DataFrame, ages: np.ndarray) -> pd.Series:

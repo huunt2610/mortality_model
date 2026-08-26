@@ -40,7 +40,9 @@ vn-mortality-models/
 ├── R/
 │   ├── 00_install_packages.R
 │   ├── 01_load_data.R       # Đọc Dxt/Ext từ data/processed thành StMoMoData
-│   ├── 02_fit_models.R      # Fit LC, RH, CBD bằng StMoMo
+│   ├── 02a_fit_lc.R         # Fit Lee-Carter bằng StMoMo
+│   ├── 02b_fit_rh.R         # Fit Renshaw-Haberman (dùng lc_fit.rds làm starting values)
+│   ├── 02c_fit_cbd.R        # Fit Cairns-Blake-Dowd bằng StMoMo
 │   ├── 03_forecast.R        # Dự báo kt, gamma_c bằng ARIMA / RWD, mô phỏng
 │   ├── 04_backtest.R        # Out-of-sample: refit trên tập train, dự báo tập test
 │   └── utils.R
@@ -274,6 +276,8 @@ Rscript R/00_install_packages.R
 # Chạy pipeline dữ liệu
 python -m src.data.make_dataset
 
-# Fit mô hình
-Rscript R/02_fit_models.R
+# Fit mô hình (đúng thứ tự - RH đọc lc_fit.rds làm starting values)
+Rscript R/02a_fit_lc.R
+Rscript R/02b_fit_rh.R
+Rscript R/02c_fit_cbd.R
 ```
