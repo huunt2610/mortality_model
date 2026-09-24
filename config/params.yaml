@@ -1,31 +1,77 @@
-# Cấu hình trung tâm — mọi script Python và R đều đọc từ file này
+# Cấu hình trung tâm — mọi script Python và R đều đọc từ file này.
+# Thiết kế ba nhánh thực nghiệm: xem docs/ban-do-tri-thuc-luan-van-du-bao-tu-vong.md, Mục 12.
+
+# ------------------------------------------------------------------
+# Bộ dữ liệu. Mỗi dataset có thư mục riêng:
+#   data/processed/<dataset>/  (Dxt, Ext, mx)   - input cho mô hình
+#   models/<dataset>/          (*.rds)          - object đã fit
+#   results/<dataset>/         (params, residuals, forecast, backtest CSV)
+# ------------------------------------------------------------------
+default_dataset: "wpp_vnm"        # dataset R/Python dùng khi không chỉ định
+
+datasets:
+  wpp_vnm:                        # Nhánh B: khớp trên WPP, kiểm chứng bằng bảng sống TCTK
+    source: "wpp"
+    iso3: "VNM"
+    branch: "B"
+  hmd_jpn:                        # Nhánh A: phòng thí nghiệm so sánh mô hình (chưa có dữ liệu)
+    source: "hmd"
+    country: "JPN"
+    branch: "A"
+  hmd_kor:
+    source: "hmd"
+    country: "KOR"
+    branch: "A"
+  hmd_twn:
+    source: "hmd"
+    country: "TWN"
+    branch: "A"
+  gso_vnm:                        # Nhánh C: Lee-Carter kiểu LLT trên bảng sống thưa
+    source: "gso"
+    branch: "C"
+
 data:
-  source: "UN_WPP_2024"          # nguồn chính
+  source: "UN_WPP_2024"          # nguồn chính cho Việt Nam
   sexes: ["male", "female", "total"]
   years:
     start: 1955                  # phạm vi thu thập/EDA đầy đủ (notebook 01, 02) - KHÔNG
     end: 2023                    # dùng trực tiếp để fit mô hình, xem `fitting.years` bên dưới
 
 ages:
-  lc_rh:                          # Lee-Carter & Renshaw-Haberman
+  lc_rh:                          # Lee-Carter, Renshaw-Haberman, APC
     min: 0
     max: 90                       # tuổi >90 loại khỏi fitting (mẫu/exposure quá nhỏ, mx
                                    # biến động mạnh) - kéo dài bảng sống bằng Kannisto/Thatcher
-                                   # ở bước ứng dụng (notebook 08), không graduate/fit trực tiếp
-  cbd:                            # CBD chỉ phù hợp tuổi già
+                                   # ở bước ứng dụng (notebook 10), không graduate/fit trực tiếp
+  cbd:                            # CBD, M7 chỉ phù hợp tuổi già
     min: 55
     max: 90
 
+# Mô hình trong họ GAPC (docs/ban-do-tri-thuc..., Mục 9.2). `ages` trỏ tới khóa trong `ages:`.
+models:
+  lc:  {ages: "lc_rh", link: "log"}      # M1
+  rh:  {ages: "lc_rh", link: "log"}      # M2 (beta0 = 1), khởi tạo từ LC
+  apc: {ages: "lc_rh", link: "log"}      # M3
+  cbd: {ages: "cbd",   link: "logit"}    # M5
+  m7:  {ages: "cbd",   link: "logit"}    # M7 - tùy chọn
+
 fitting:
   years:
-    start: 1980                   # loại giai đoạn chiến tranh/biến động lịch sử 1950-1979
-    end: 2010                     # khỏi ước lượng ax/bx/kt/gc chính thức (notebook 04-06)
+    start: 1990                   # Nhánh B (bản đồ tri thức, Mục 12.2): khớp WPP 1990-2008,
+    end: 2008                     # dự báo 2009-2024, kiểm chứng tại bảng sống TCTK 2009/2014/2019/2024
+  cohort_clip: 3                  # số cohort bỏ ở mỗi rìa Lexis (genWeightMat clip) cho RH/APC/M7
 
 backtest:
+  models: ["lc"]                  # mô hình chạy backtest (R/04_backtest.R hỗ trợ mọi mô hình ở `models:`)
   splits:
-    - {train_start: 1980, train_end: 2010, test_end: 2021}   # split chính - khớp fitting.years
-    - {train_start: 1980, train_end: 2005, test_end: 2015}   # kiểm tra độ ổn định
+    - {train_start: 1990, train_end: 2008, test_end: 2023}   # split chính - khớp fitting.years, hết chuỗi WPP
+    - {train_start: 1990, train_end: 2003, test_end: 2013}   # kiểm tra độ ổn định (train ngắn hơn 5 năm)
   exclude_covid_years: [2020, 2021, 2022] # báo cáo kết quả cả có và không có
+
+# Nhánh B: dự báo từ WPP (khớp trên `fitting.years`) so với bảng sống chính thức (Mục 12.2).
+validation:
+  gso_years: [2009, 2014, 2019, 2024]    # các thời điểm kiểm chứng (tầm 1, 6, 11, 16 năm)
+  compare_ages: [0, 60, 65]              # e0, e60, e65
 
 forecast:
   horizon: 30                     # số năm dự báo
@@ -36,3 +82,15 @@ forecast:
 evaluation:
   metrics: ["rmse", "mape", "deviance"]
   information_criteria: ["aic", "bic"]
+  coverage_level: 0.95            # độ phủ khoảng dự báo (Mục 13)
+
+# Ứng dụng quản trị rủi ro (Mục 14). Các giá trị đánh dấu [CẦN KIỂM TRA] phải đối chiếu
+# văn bản pháp lý hiện hành trước khi dùng cho kết quả luận văn.
+application:
+  n_scenarios: 10000
+  horizon: 50
+  interest_rate: null             # [CẦN KIỂM TRA] lãi suất kỹ thuật tối đa theo quy định
+  insured_factors: [0.6, 0.7, 0.8]   # hệ số điều chỉnh dân số -> người được bảo hiểm
+  var_level: 0.995
+  annuity: {age: 65}              # niên kim trọn đời trả đầu kỳ
+  term: {age: 35, n: 20}          # bảo hiểm tử kỳ 20 năm

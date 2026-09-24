@@ -1,0 +1,94 @@
+"""Đọc bảng sống tuổi đơn UN WPP (.xlsx) - nguồn khớp mô hình cho Việt Nam (nhánh B).
+
+UN WPP xuất file Excel với vài chục dòng metadata phía trên bảng dữ liệu thật,
+và tên cột đầy đủ (vd. "Central death rate m(x,n)") có thể lệch nhẹ giữa các
+kỳ revision. Thay vì cố định vị trí dòng/cột, ta dò dòng tiêu đề bằng cách tìm
+dòng khớp nhiều nhất các nhãn cột mong đợi, rồi khớp cột theo mẫu regex -
+chịu được thay đổi nhỏ về định dạng giữa các lần UN cập nhật.
+"""
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import pandas as pd
+
+ISO3_VIETNAM = "VNM"
+
+_HEADER_HINTS: dict[str, re.Pattern] = {
+    "iso3": re.compile(r"iso3", re.I),
+    "year": re.compile(r"^year$|reference date|mid-period", re.I),
+    "age": re.compile(r"age\s*\(x\)|agegrpstart", re.I),
+    "mx": re.compile(r"central death rate", re.I),
+    "exposure": re.compile(r"person-years lived", re.I),
+}
+
+
+def _find_header_row(raw: pd.DataFrame, max_scan: int = 30, min_hits: int = 4) -> int:
+    """Dòng tiêu đề = dòng đầu tiên khớp được >= min_hits / len(_HEADER_HINTS) nhãn cột."""
+    for i in range(min(max_scan, len(raw))):
+        cells = [str(c) for c in raw.iloc[i].tolist()]
+        hits = sum(any(p.search(c) for c in cells) for p in _HEADER_HINTS.values())
+        if hits >= min_hits:
+            return i
+    raise ValueError(
+        "Không tìm thấy dòng tiêu đề trong file UN WPP trong "
+        f"{max_scan} dòng đầu - kiểm tra lại định dạng file (sheet, số dòng metadata)."
+    )
+
+
+def _match_column(columns: pd.Index, pattern: re.Pattern) -> str:
+    for c in columns:
+        if pattern.search(str(c)):
+            return c
+    raise KeyError(f"Không tìm thấy cột khớp mẫu {pattern.pattern!r} trong {list(columns)}")
+
+
+def read_wpp_single_age_life_table(path: Path, iso3: str = ISO3_VIETNAM) -> pd.DataFrame:
+    """Đọc 1 file bảng sống tuổi đơn UN WPP (1 giới tính), lọc riêng theo `iso3`.
+
+    File gốc chứa toàn bộ các quốc gia/vùng lãnh thổ - `iso3` mặc định là Việt
+    Nam, nhưng có thể đổi (vd. "JPN", "KOR") để lấy dữ liệu so sánh mà không
+    cần tải thêm file.
+
+    Trả về long-format: cột year, age, mx, exposure.
+    """
+    all_sheets = pd.ExcelFile(path).sheet_names
+    estimate_sheets = [s for s in all_sheets if re.match(r"estimates", s, re.I)]
+    if not estimate_sheets:
+        estimate_sheets = [all_sheets[0]]
+
+    parts = []
+    for sheet in estimate_sheets:
+        raw = pd.read_excel(path, sheet_name=sheet, header=None)
+
+        header_row = _find_header_row(raw)
+        df = raw.iloc[header_row + 1:].copy()
+        df.columns = raw.iloc[header_row]
+        df = df.reset_index(drop=True)
+
+        col_iso3 = _match_column(df.columns, _HEADER_HINTS["iso3"])
+        col_year = _match_column(df.columns, _HEADER_HINTS["year"])
+        col_age = _match_column(df.columns, _HEADER_HINTS["age"])
+        col_mx = _match_column(df.columns, _HEADER_HINTS["mx"])
+        col_exposure = _match_column(df.columns, _HEADER_HINTS["exposure"])
+
+        sub = df[df[col_iso3].astype(str).str.upper() == iso3.upper()].copy()
+        if sub.empty:
+            continue
+
+        parts.append(pd.DataFrame({
+            "year": pd.to_numeric(sub[col_year], errors="coerce"),
+            "age": pd.to_numeric(sub[col_age], errors="coerce"),
+            "mx": pd.to_numeric(sub[col_mx], errors="coerce"),
+            "exposure": pd.to_numeric(sub[col_exposure], errors="coerce"),
+        }).dropna())
+
+    if not parts:
+        raise ValueError(f"Không tìm thấy dữ liệu ISO3={iso3} trong {path.name}")
+
+    out = pd.concat(parts, ignore_index=True)
+    out["year"] = out["year"].astype(int)
+    out["age"] = out["age"].astype(int)
+    return out.sort_values(["year", "age"]).reset_index(drop=True)
+

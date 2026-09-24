@@ -11,49 +11,71 @@ quản trị rủi ro trong doanh nghiệp bảo hiểm nhân thọ.
 | Việc | Công cụ |
 |---|---|
 | Thu thập, tiền xử lý dữ liệu, EDA, vẽ hình | Python (pandas, matplotlib) - `src/`, `notebooks/` |
-| Fit mô hình LC / RH / CBD, dự báo, mô phỏng | R (**StMoMo**, demography, forecast) - `R/` |
-| Đánh giá, backtest, tổng hợp kết quả | Python + R - `src/evaluation/`, `notebooks/07` |
+| Fit mô hình LC / RH / APC / CBD / M7, dự báo, mô phỏng | R (**StMoMo**, demography, forecast) - `R/` |
+| Đánh giá, backtest, phân rã sai số, định giá & đo rủi ro | Python + R - `src/evaluation/`, `src/risk/`, `notebooks/07`–`10` |
 
-R fit mô hình rồi export kết quả (tham số, dự báo, residuals) ra CSV trong
-`data/processed/` và `models/`; Python đọc lại để phân tích và vẽ hình luận văn.
+R fit mô hình rồi export kết quả (tham số, dự báo, residuals, backtest) ra CSV trong
+`results/<dataset>/` (object `.rds` trong `models/<dataset>/`); Python đọc lại để phân tích
+và vẽ hình luận văn.
+
+## Thiết kế thực nghiệm: ba nhánh
+
+Chi tiết trong [docs/ban-do-tri-thuc-luan-van-du-bao-tu-vong.md](docs/ban-do-tri-thuc-luan-van-du-bao-tu-vong.md) (Mục 12).
+Mỗi nhánh ứng với một hoặc nhiều **dataset** khai báo ở `datasets:` trong `config/params.yaml`:
+
+| Nhánh | Dataset | Vai trò | Notebook |
+|---|---|---|---|
+| A | `hmd_jpn`, `hmd_kor`, `hmd_twn` | So sánh mô hình + backtest trên dữ liệu HMD chất lượng cao | 07 |
+| B | `wpp_vnm` | Khớp trên WPP 2024, kiểm chứng bằng bảng sống TCTK, phân rã sai số | 04–06, 08 |
+| C | `gso_vnm` | Lee-Carter kiểu LLT trên bảng sống TCTK thưa | 09 |
+| Ứng dụng | mô hình được chọn | Mô phỏng kịch bản → ä₆₅, A¹ → VaR 99,5%, ES → so với CSO 1980 | 10 |
 
 ## Cấu trúc thư mục
 
 ```
-vn-mortality-models/
+mortality_model/
 ├── config/
-│   └── params.yaml          # Phạm vi tuổi, năm, split train/test - MỘT nơi duy nhất
+│   └── params.yaml          # Dataset, phạm vi tuổi/năm, mô hình, split - MỘT nơi duy nhất
 ├── data/
 │   ├── raw/                 # Dữ liệu gốc tải về, KHÔNG BAO GIỜ sửa tay (không commit)
-│   ├── external/            # Tài liệu tham chiếu: bảng sống GSO, metadata nguồn
-│   ├── interim/             # Dữ liệu trung gian đang xử lý
-│   └── processed/           # Ma trận Dxt, Ext sạch - input cho mô hình
-├── notebooks/               # Đánh số theo thứ tự pipeline, mỗi notebook ≈ 1 mục luận văn
+│   │   ├── wpp/             #   UN WPP 2024 (.xlsx)
+│   │   ├── hmd/<COUNTRY>/   #   HMD Deaths_1x1.txt, Exposures_1x1.txt
+│   │   └── cso/             #   Bảng CSO 1980
+│   ├── external/            # SOURCES.md, PDF tham chiếu, gso/ (bảng sống GSO số hoá tay - commit)
+│   ├── interim/             # Dữ liệu trung gian đang xử lý (không commit)
+│   └── processed/<dataset>/ # Ma trận Dxt, Ext, mx sạch - input cho mô hình
+├── notebooks/               # Mỗi notebook ≈ 1 mục luận văn
 │   ├── 01_data_collection.ipynb
 │   ├── 02_eda_vietnam_mortality.ipynb
 │   ├── 03_smoothing_graduation.ipynb
 │   ├── 04_lee_carter.ipynb
-│   ├── 05_renshaw_haberman.ipynb
-│   ├── 06_cbd.ipynb
-│   ├── 07_model_comparison_backtest.ipynb
-│   └── 08_insurance_applications.ipynb
-├── R/
+│   ├── 05_renshaw_haberman.ipynb         # RH + APC
+│   ├── 06_cbd.ipynb                      # CBD + M7
+│   ├── 07_model_comparison_backtest.ipynb  # nhánh A
+│   ├── 08_branch_b_validation_gso.ipynb  # nhánh B
+│   ├── 09_branch_c_llt.ipynb             # nhánh C
+│   └── 10_insurance_applications.ipynb   # ứng dụng
+├── R/                       # Mọi script nhận tham số dataset: Rscript R/02a_fit_lc.R [dataset]
 │   ├── 00_install_packages.R
-│   ├── 01_load_data.R       # Đọc Dxt/Ext từ data/processed thành StMoMoData
-│   ├── 02a_fit_lc.R         # Fit Lee-Carter bằng StMoMo
-│   ├── 02b_fit_rh.R         # Fit Renshaw-Haberman (dùng lc_fit.rds làm starting values)
-│   ├── 02c_fit_cbd.R        # Fit Cairns-Blake-Dowd bằng StMoMo
-│   ├── 03_forecast.R        # Dự báo kt, gamma_c bằng ARIMA / RWD, mô phỏng
+│   ├── 02a_fit_lc.R … 02e_fit_m7.R  # Fit từng mô hình (RH cần lc_fit.rds làm starting values)
+│   ├── 03_forecast.R        # Dự báo kt, gamma_c bằng RWD / ARIMA, mô phỏng
 │   ├── 04_backtest.R        # Out-of-sample: refit trên tập train, dự báo tập test
-│   └── utils.R
+│   ├── 05_fit_llt.R         # Nhánh C (khung)
+│   ├── 06_simulate_scenarios.R  # Kịch bản + bootstrap cho ứng dụng (khung)
+│   └── lib/                 # Được source(), không chạy trực tiếp: load_data, models, export, diagnostics
 ├── src/                     # Python package
-│   ├── data/                # download, làm sạch, dựng ma trận Dxt/Ext
-│   ├── evaluation/          # RMSE, MAPE, deviance, so sánh mô hình
+│   ├── data/                # Đọc nguồn (wpp, hmd, gso), dựng + kiểm tra ma trận Dxt/Ext
+│   ├── demography/          # Bảng sống, làm trơn/graduation, hài hoà nhóm tuổi
+│   ├── evaluation/          # RMSE, MAPE, deviance, độ phủ, phân rã sai số, chẩn đoán cohort
+│   ├── risk/                # Định giá niên kim/tử kỳ theo đoàn hệ, VaR, ES
 │   └── visualization/       # Hình chuẩn cho luận văn (log mx, Lexis heatmap,…)
-├── models/                  # Object mô hình đã fit (.rds) + tham số export (không commit file lớn)
+├── models/<dataset>/        # Object mô hình đã fit (.rds, không commit)
+├── results/<dataset>/       # Output mô hình từ R: params, residuals, forecast, backtest (CSV)
 ├── reports/
-│   ├── figures/             # Hình cuối cùng chèn vào luận văn (PDF/PNG 300dpi)
-│   └── thesis/              # Bản thảo các chương
+│   ├── figures/             # Hình cuối cùng chèn vào luận văn (PDF 300dpi)
+│   ├── thesis/              # Bản thảo các chương
+│   └── nhat_ky_nghien_cuu.md
+├── docs/                    # Bản đồ tri thức luận văn
 ├── references/              # PDF papers (không commit nếu có bản quyền)
 ├── tests/                   # pytest cho src/
 ├── requirements.txt         # Môi trường Python
@@ -70,14 +92,15 @@ vn-mortality-models/
    Notebook chỉ gọi hàm, không chứa hàm dài.
 4. **Mỗi hình trong luận văn sinh ra từ một hàm** trong `src/visualization/`,
    lưu vào `reports/figures/` - sửa được và chạy lại được đến phút chót.
-5. Commit thường xuyên, message rõ ràng: `feat: fit RH model with beta0=1 constraint`.
+5. Commit thường xuyên, message tiếng Việt ngắn gọn: `fit RH với ràng buộc beta0=1`.
 
 ## Nguồn dữ liệu
 
-- **UN World Population Prospects (WPP)** - bảng sống tuổi đơn, 1950–nay, nguồn chính
-  (lưu ý trong luận văn: dữ liệu đã được UN làm trơn bằng mô hình).
+- **UN World Population Prospects (WPP)** - bảng sống tuổi đơn, 1950–nay, nguồn khớp
+  mô hình cho Việt Nam - nhánh B (lưu ý trong luận văn: dữ liệu đã được UN làm trơn bằng mô hình).
 - **GSO Việt Nam** - bảng sống rút gọn từ Tổng điều tra 2009/2019, điều tra giữa kỳ,
-  Niên giám Thống kê: dùng để đối chiếu kiểm chứng.
+  Niên giám Thống kê: kiểm chứng nhánh B, dữ liệu khớp nhánh C.
+- **Human Mortality Database (HMD)** - Nhật Bản, Hàn Quốc, Đài Loan: so sánh mô hình (nhánh A).
 - **WHO Mortality Database** - dữ liệu VN thưa, chỉ tham khảo.
 - Việt Nam **không có** trong Human Mortality Database.
 
@@ -273,11 +296,17 @@ pip install -r requirements.txt
 # R
 Rscript R/00_install_packages.R
 
-# Chạy pipeline dữ liệu
+# Chạy pipeline dữ liệu (mặc định dataset wpp_vnm)
 python -m src.data.make_dataset
+python -m src.data.make_dataset --dataset hmd_jpn   # nhánh A, cần dữ liệu HMD trong data/raw/hmd/JPN/
 
-# Fit mô hình (đúng thứ tự - RH đọc lc_fit.rds làm starting values)
+# Fit mô hình (đúng thứ tự - RH đọc lc_fit.rds làm starting values), rồi dự báo, backtest.
+# Tham số cuối là dataset, bỏ trống = default_dataset trong config
 Rscript R/02a_fit_lc.R
 Rscript R/02b_fit_rh.R
 Rscript R/02c_fit_cbd.R
+Rscript R/02d_fit_apc.R
+Rscript R/02e_fit_m7.R
+Rscript R/03_forecast.R
+Rscript R/04_backtest.R
 ```

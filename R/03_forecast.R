@@ -1,22 +1,35 @@
+# ============================================================
 # 03_forecast.R — Du bao kt (RWD/ARIMA), gamma_c (ARIMA), mo phong khoang tin cay
-library(StMoMo); library(yaml)
-cfg <- yaml::read_yaml("config/params.yaml")
-h <- cfg$forecast$horizon; nsim <- cfg$forecast$n_simulations
+# Chay  : Rscript R/03_forecast.R [dataset]
+# Input : models/<dataset>/<model>_fit.rds (moi mo hinh trong `models:` da duoc fit)
+# Output: models/<dataset>/forecasts.rds, results/<dataset>/forecast_rates_<model>.csv
+# ============================================================
+source("R/lib/load_data.R")
+source("R/lib/models.R")
 
-LCfit  <- readRDS("models/lc_fit.rds")
-RHfit  <- readRDS("models/rh_fit.rds")
-CBDfit <- readRDS("models/cbd_fit.rds")
+cfg <- load_config()
+dataset <- get_dataset(cfg)
+h <- cfg$forecast$horizon
+nsim <- cfg$forecast$n_simulations
 
-LCfor  <- forecast(LCfit,  h = h)                          # mac dinh: RWD cho kt
-RHfor  <- forecast(RHfit,  h = h, gc.order = c(1, 1, 0))   # ARIMA cho cohort
-CBDfor <- forecast(CBDfit, h = h)                          # MRWD cho (kt1, kt2)
+fit_paths <- file.path(models_dir(dataset), sprintf("%s_fit.rds", names(cfg$models)))
+names(fit_paths) <- names(cfg$models)
+fit_paths <- fit_paths[file.exists(fit_paths)]
+if (length(fit_paths) == 0) {
+  stop("Chua co fit nao trong ", models_dir(dataset), " - chay R/02*_fit_*.R truoc")
+}
+
+forecasts <- list()
+for (name in names(fit_paths)) {
+  f <- readRDS(fit_paths[[name]])
+  forecasts[[name]] <- forecast_model(f, name, h)
+  # Export ty suat tu vong du bao (trung vi) cho Python ve hinh.
+  # Luu y: LC/RH/APC tra ve m(x,t); CBD/M7 (link logit) tra ve q(x,t)
+  write.csv(forecasts[[name]]$rates,
+            file.path(results_dir(dataset), sprintf("forecast_rates_%s.csv", name)))
+}
 
 # Mo phong de tinh khoang tin cay (dung cho fan chart + pricing)
-LCsim <- simulate(LCfit, nsim = nsim, h = h)
-saveRDS(list(LCfor = LCfor, RHfor = RHfor, CBDfor = CBDfor, LCsim = LCsim),
-        "models/forecasts.rds")
-
-# Export tỷ suất tử vong dự báo (trung vị) cho Python vẽ hình
-write.csv(LCfor$rates,  "data/processed/forecast_rates_lc.csv")
-write.csv(RHfor$rates,  "data/processed/forecast_rates_rh.csv")
-write.csv(CBDfor$rates, "data/processed/forecast_rates_cbd.csv")
+sims <- list()
+if ("lc" %in% names(fit_paths)) sims$lc <- simulate(readRDS(fit_paths[["lc"]]), nsim = nsim, h = h)
+saveRDS(list(forecasts = forecasts, sims = sims), file.path(models_dir(dataset), "forecasts.rds"))

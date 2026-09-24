@@ -4,10 +4,11 @@
 > trước khi đưa vào bản thảo chính thức — Lời cam đoan yêu cầu luận văn là công trình do học viên
 > thực hiện.
 >
-> **Đã đối chiếu (2026-08-26):** notebook 04 đã được chạy lại và lưu, số liệu trong mục 3.2 dưới đây
-> khớp chính xác với output hiện tại của notebook (kt 1980–2010, cohort residual −0,593→0,527 tại
-> cohort 1980/1910, ADF diff(kt) p≈0,09). Cả 3 hình liên quan (`lc_params_total.pdf`,
-> `residuals_lc.pdf`, `lc_cohort_mean_residual.pdf`) đã được sinh lại, không còn cảnh báo lỗi thời.
+> **Đã đối chiếu (2026-09-24):** cửa sổ ước lượng đổi từ 1980–2010 sang 1990–2008 theo thiết kế
+> nhánh B (`docs/ban-do-tri-thuc-luan-van-du-bao-tu-vong.md`, Mục 12.2). Notebook 04 đã được chạy lại
+> và lưu; số liệu trong mục 3.2 dưới đây khớp với output hiện tại (kt 1990–2008, cohort residual
+> −0,574→1,326 tại cohort 1992/1997, ADF diff(kt) p≈0,43, AIC 14515,4). Cả 3 hình liên quan
+> (`lc_params_total.pdf`, `residuals_lc.pdf`, `lc_cohort_mean_residual.pdf`) đã được sinh lại.
 >
 > Số hiệu bảng/hình/phương trình dưới đây đánh theo Chương 3, bắt đầu từ 3.1 — cần điều chỉnh lại cho
 > khớp với vị trí thực tế trong bản thảo hoàn chỉnh (ví dụ nếu Chương 3 có mục 3.0 nào đó trước).
@@ -78,8 +79,8 @@ quy tuyến tính riêng hai đoạn và chọn điểm gãy có tổng sai số
 nghĩa bằng kiểm định Chow, cho kết quả điểm gãy tại năm **1974** ($F \approx 123,1$, $p < 10^{-16}$):
 độ dốc đổi dấu hoàn toàn, từ $+0,0103$/năm (1955–1974, tử vong xấu đi) sang $-0,0143$/năm (1975 trở
 đi, tử vong cải thiện). Mốc 1974 trùng gần như chính xác với thời điểm kết thúc Chiến tranh Việt Nam
-(1975), và là bằng chứng định lượng độc lập — không cần fit mô hình — cho quyết định loại giai đoạn
-1955–1979 khỏi cửa sổ ước lượng tham số chính thức (`fitting.years.start = 1980`, xem mục 3.2).
+(1975), và là bằng chứng định lượng độc lập — không cần fit mô hình — cho việc không đưa giai đoạn
+trước 1975 vào cửa sổ ước lượng tham số chính thức (cửa sổ 1990–2008, xem mục 3.2).
 
 ### 3.1.3 Khác biệt tử vong theo giới tính
 
@@ -165,7 +166,7 @@ kỳ vọng tăng**, thành phần trực tiếp liên quan đến tử vong và
 trường thọ — longevity risk) cho phần ứng dụng bảo hiểm ở chương sau.
 
 Tuổi thọ kỳ vọng khi sinh $e_0$ và tuổi thọ kỳ vọng ở tuổi 60 $e_{60}$ được dựng từ bảng sống suy ra
-theo $m(x,t)$ (xem `src/data/life_table.py`, giả định lực chết không đổi trong mỗi khoảng tuổi). Bảng
+theo $m(x,t)$ (xem `src/demography/life_table.py`, giả định lực chết không đổi trong mỗi khoảng tuổi). Bảng
 3.3 trình bày kết quả tại các năm mốc. Hình 3.7 và Hình 3.8 minh hoạ xu hướng theo thời gian, phân theo
 giới tính (nguồn hình: `reports/figures/e0_trend_by_sex.pdf`, `reports/figures/e60_trend_by_sex.pdf`).
 
@@ -206,20 +207,22 @@ Mô hình Lee-Carter (Lee & Carter, 1992 [CẦN BỔ SUNG NGUỒN]) được ư�
 $$\log m(x,t) = a_x + b_x k_t, \qquad \sum_x b_x = 1, \quad \sum_t k_t = 0 \tag{3.2}$$
 
 bằng gói `StMoMo` trong R, giả định số ca tử vong tuân theo phân phối Poisson và liên kết log. Tham số
-được ước lượng trên phạm vi tuổi 0–90 và giai đoạn 1980–2010 (`fitting.years` trong
-`config/params.yaml`), sau khi loại giai đoạn 1955–1979 dựa trên bằng chứng điểm gãy cấu trúc tại 1974
-đã trình bày ở mục 3.1.2.
+được ước lượng trên phạm vi tuổi 0–90 và giai đoạn 1990–2008 (`fitting.years` trong
+`config/params.yaml`). Cửa sổ này được chọn theo thiết kế kiểm chứng: ước lượng trên WPP 1990–2008,
+dự báo giai đoạn 2009–2024 rồi đối chiếu với các bảng sống chính thức 2009, 2014, 2019 và 2024 (tầm
+dự báo 1, 6, 11 và 16 năm); đồng thời cửa sổ nằm trọn trong giai đoạn sau điểm gãy cấu trúc 1974 đã
+trình bày ở mục 3.1.2.
 
 ### 3.2.1 Tham số $a_x$ và $b_x$
 
 Hệ số $a_x$ (log tỷ suất tử vong trung bình theo thời gian tại từng tuổi) tái hiện đúng hình dạng chữ
-V đã quan sát ở mục 3.1.1: thấp nhất tại tuổi 11 ($a_x \approx -7,13$), cao nhất tại tuổi 90
-($a_x \approx -1,55$). Hình 3.9 trình bày cả ba tham số $a_x$, $b_x$, $k_t$ (nguồn hình:
+V đã quan sát ở mục 3.1.1: thấp nhất tại tuổi 11 ($a_x \approx -7,25$), cao nhất tại tuổi 90
+($a_x \approx -1,59$). Hình 3.9 trình bày cả ba tham số $a_x$, $b_x$, $k_t$ (nguồn hình:
 `reports/figures/lc_params_total.pdf`).
 
 Hệ số $b_x$ đo mức độ mỗi tuổi phản ứng với xu hướng chung $k_t$, đạt giá trị cao nhất tại **tuổi 1**
-($b_x \approx 0,0361$) — cao gấp khoảng 3,3 lần mức trung bình ($1/91 \approx 0,011$) — và thấp nhất
-tại tuổi 90 ($b_x \approx 0,007$). Tuổi 1 nhạy nhất với $k_t$ đồng nghĩa $m(1,t)$ biến động (cải
+($b_x \approx 0,0442$) — cao gấp khoảng 4 lần mức trung bình ($1/91 \approx 0,011$) — và thấp nhất
+tại tuổi 19 ($b_x \approx 0,0083$), tuổi 90 xấp xỉ mức đó ($b_x \approx 0,0086$). Tuổi 1 nhạy nhất với $k_t$ đồng nghĩa $m(1,t)$ biến động (cải
 thiện) nhanh nhất theo thời gian trong toàn bộ dải tuổi ước lượng. Đáng chú ý, đây đúng là tuổi đã
 được xác định nghi vấn có artifact ước lượng của UN ở mục 3.1.4; hệ số $b_x$ bất thường cao tại đây
 cần được diễn giải thận trọng — nhiều khả năng phản ánh một phần nguồn artifact ước lượng tử vong trẻ
@@ -227,20 +230,20 @@ em, không hoàn toàn là tín hiệu cải thiện y tế thuần tuý.
 
 ### 3.2.2 Xu hướng $k_t$ và kiểm định giả định random-walk-with-drift
 
-Chỉ số xu hướng chung $k_t$ giảm gần như tuyến tính trong giai đoạn ước lượng, từ $24,22$ (1980)
-xuống $-18,09$ (2010), độ dốc trung bình $\approx -1,57$/năm — cùng chiều với xu hướng cải thiện tử
+Chỉ số xu hướng chung $k_t$ giảm gần như tuyến tính trong giai đoạn ước lượng, từ $13,61$ (1990)
+xuống $-8,67$ (2008), độ dốc trung bình $\approx -1,38$/năm — cùng chiều với xu hướng cải thiện tử
 vong chung ($b_x > 0$ tại mọi tuổi nên $k_t$ giảm đồng nghĩa $m(x,t)$ giảm ở mọi tuổi).
 
-Kiểm định ADF trực tiếp trên $k_t$ (chỉ 30 sai phân do cửa sổ ước lượng 1980–2010) cho kết quả yếu
-hơn phép kiểm tra sơ bộ ở mục 3.1.2: chuỗi gốc không bác bỏ giả thuyết nghiệm đơn vị ($p \approx
-0,57$, đúng kỳ vọng của bước ngẫu nhiên), nhưng chuỗi sai phân chỉ bác bỏ giả thuyết đó ở mức ý nghĩa
-biên ($p \approx 0,09$, không đạt ngưỡng $5\%$ thông thường). Điều này phù hợp với nhận định đã nêu ở
+Kiểm định ADF trực tiếp trên $k_t$ (chỉ 18 sai phân do cửa sổ ước lượng 1990–2008) không cung cấp
+được bằng chứng rõ ràng: chuỗi gốc không bác bỏ giả thuyết nghiệm đơn vị ($p \approx 0,17$, đúng kỳ
+vọng của bước ngẫu nhiên), nhưng chuỗi sai phân cũng không bác bỏ giả thuyết đó ($p \approx 0,43$). Điều này phù hợp với nhận định đã nêu ở
 mục 3.1.2: cửa sổ ước lượng càng hẹp, số sai phân càng ít, kiểm định càng mất power thống kê. Do đó,
 bằng chứng chính cho việc chọn random-walk-with-drift làm mô hình dự báo $k_t$ (`forecast.kt_model:
 "rwd"`) nên dựa vào kết quả kiểm định trên chỉ số $\bar m_t$ tính trên toàn bộ 1955–2023 (68 sai phân,
 mục 3.1.2, $p \approx 0,0002$) — vốn có power cao hơn hẳn — hơn là kiểm định trực tiếp trên $k_t$ của
 cửa sổ ước lượng ngắn hơn. Đây cũng là một hạn chế cần nêu trong phần thảo luận: cỡ mẫu thời gian
-30 năm là tương đối ngắn để kiểm định vững chắc tính chất chuỗi thời gian của $k_t$.
+19 năm là quá ngắn để kiểm định vững chắc tính chất chuỗi thời gian của $k_t$ — cái giá của thiết kế
+kiểm chứng ngoài mẫu với các bảng sống chính thức.
 
 ### 3.2.3 Phân tích phần dư và giới hạn của cửa sổ ước lượng đối với hiệu ứng thế hệ
 
@@ -248,24 +251,26 @@ Hình 3.10 (heatmap phần dư, nguồn hình: `reports/figures/residuals_lc.pdf
 bình theo cohort, nguồn hình: `reports/figures/lc_cohort_mean_residual.pdf`) minh hoạ phân tích dưới đây.
 
 Deviance residual của mô hình LC đã fit cho phép kiểm tra hiệu ứng thế hệ (cohort effect) còn sót lại
-mà mô hình — không có cấu phần cohort $\gamma_c$ — không nắm bắt được. Với cửa sổ ước lượng 1980–2010
-(31 năm), số quan sát tối đa cho một cohort (năm sinh $c = t - x$) chỉ có thể đạt 31 — thấp hơn nhiều
-so với cửa sổ đầy đủ 1955–2023 dùng ở phân tích EDA sơ bộ (mục 3.1). Áp dụng ngưỡng tối thiểu 20 quan
-sát mỗi cohort để loại các cohort ở rìa dữ liệu, phần dư trung bình theo cohort dao động từ $-0,59$
-(cohort 1980, nằm ngay biên đầu cửa sổ ước lượng) đến $+0,53$ (cohort 1910, chỉ quan sát được ở các
-tuổi rất già 70–90 trong cửa sổ này).
+mà mô hình — không có cấu phần cohort $\gamma_c$ — không nắm bắt được. Với cửa sổ ước lượng 1990–2008
+(19 năm), số quan sát tối đa cho một cohort (năm sinh $c = t - x$) chỉ có thể đạt 19 — thấp hơn nhiều
+so với cửa sổ đầy đủ 1955–2023 dùng ở phân tích EDA sơ bộ (mục 3.1). Áp dụng ngưỡng tối thiểu 12 quan
+sát mỗi cohort (khoảng 2/3 số năm ước lượng) để loại các cohort ở rìa dữ liệu, phần dư trung bình theo
+cohort dao động từ $-0,57$ (cohort 1992, chỉ quan sát được ở tuổi 0–16) đến $+1,33$ (cohort 1997, chỉ
+quan sát được ở tuổi 0–11, vừa đủ ngưỡng 12 quan sát).
 
-**Nhận định:** với cửa sổ ước lượng chỉ 31 năm, phần lớn các cohort có phần dư cực trị nằm ngay tại
-hoặc gần biên của cửa sổ quan sát (năm 1980 hoặc các cohort chỉ quan sát được một phần hẹp của vòng
-đời) — đây là biểu hiện điển hình của vấn đề nhận dạng tuổi–năm–thế hệ (age-period-cohort
+**Nhận định:** với cửa sổ ước lượng chỉ 19 năm, các cohort có phần dư cực trị nằm sát biên cuối của
+cửa sổ quan sát và chỉ được quan sát ở vùng tuổi nhỏ — nơi $b_x$ lớn nhất và tuổi 1 đã bị nghi vấn
+artifact ước lượng ở mục 3.1.4 — đây là biểu hiện điển hình của vấn đề nhận dạng tuổi–năm–thế hệ (age-period-cohort
 identification problem) khi cửa sổ thời gian ngắn so với dải tuổi ước lượng, không phải bằng chứng
 đủ mạnh cho một hiệu ứng thế hệ có cấu trúc rõ ràng như mô thức "gò" (đỉnh dương quanh cohort
 1950–1954) đã quan sát được ở phân tích EDA sơ bộ trên toàn bộ 1955–2023 (mục 3.1, sử dụng phép tách
 tuổi+năm đơn giản, giả định ngầm $b_x = 1$). Kết luận về sự tồn tại và hình dạng thật của hiệu ứng
 thế hệ tại Việt Nam, do đó, cần dựa vào kết quả ước lượng $\gamma_c$ chính thức của mô hình
 Renshaw–Haberman (Chương 3, mục kế tiếp) hơn là phần dư LC trên cửa sổ ước lượng hẹp này — và cần
-thảo luận thẳng thắn trong phần Hạn chế rằng cửa sổ 30 năm là tương đối ngắn để tách bạch tin cậy ba
-hiệu ứng tuổi/năm/thế hệ.
+thảo luận thẳng thắn trong phần Hạn chế rằng cửa sổ 19 năm là quá ngắn để tách bạch tin cậy ba
+hiệu ứng tuổi/năm/thế hệ. Ngoài ra, vì hình dạng tử vong theo tuổi trong WPP được neo vào các bảng HMD
+qua mô hình Log-Quad, $\gamma_c$ ước lượng trên dữ liệu này không nên được diễn giải như dấu vết của
+các sự kiện lịch sử.
 
-Chỉ số thông tin AIC $= 24057,9$ và BIC $= 25312,2$ của mô hình LC được dùng làm mốc so sánh với các
+Chỉ số thông tin AIC $= 14515,4$ và BIC $= 15601,0$ của mô hình LC được dùng làm mốc so sánh với các
 mô hình Renshaw-Haberman và CBD ở phần so sánh mô hình (Chương 3, mục so sánh/backtest).

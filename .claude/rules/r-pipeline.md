@@ -5,42 +5,48 @@ paths:
 
 # Pipeline fit mô hình trong R
 
-Các script `R/` có cách đánh số 00–04 riêng (khác với các notebook stub — xem
-`language-split.md`) và chạy theo thứ tự, mỗi bước đọc output từ đĩa của bước trước:
+Mọi script chạy từ gốc repo và nhận **dataset** là tham số dòng lệnh đầu tiên
+(`Rscript R/02a_fit_lc.R hmd_jpn`); bỏ trống thì dùng `default_dataset` trong
+`config/params.yaml` (hiện là `wpp_vnm`). Dataset không có trong `datasets:` → `stop()`.
 
-1. `R/01_load_data.R` — không chạy trực tiếp; định nghĩa `load_vn_data(series)` đọc
-   `data/processed/Dxt_{series}.csv` / `Ext_{series}.csv` thành đối tượng `StMoMoData`.
-   Được `source()` bởi các script khác chứ không chạy độc lập.
-2. Bước fit — **tách riêng mỗi model một file**, chạy theo đúng thứ tự a→b→c (RH đọc
-   `models/lc_fit.rds` làm starting values, dừng sớm với thông báo lỗi rõ nếu file này
-   chưa tồn tại):
-   - `R/02a_fit_lc.R` — fit LC. Ghi `models/lc_fit.rds`, `data/processed/params_lc_*.csv`,
-     `residuals_lc.csv`.
-   - `R/02b_fit_rh.R` — fit RH, cần `models/lc_fit.rds` đã có sẵn. Ghi `models/rh_fit.rds`,
-     `data/processed/params_rh_*.csv`, `residuals_rh.csv`.
-   - `R/02c_fit_cbd.R` — fit CBD (độc lập, không phụ thuộc LC/RH). Ghi
-     `models/cbd_fit.rds`, `data/processed/params_cbd_*.csv`, `residuals_cbd.csv`.
-   - Cả 3 đều đọc `fitting.years` và phạm vi tuổi riêng cho từng model từ
-     `config/params.yaml`, và dùng chung `name_cols()`/`export_params()`/
-     `export_fit_summary()` trong `R/utils.R` để ghi CSV + in AIC/BIC.
-3. `R/03_forecast.R` — nạp lại các fit `.rds`, dự báo `kt`/`gc` (RWD/ARIMA theo
-   `forecast.kt_model`/`gc_model`), mô phỏng `forecast.n_simulations` đường để tính khoảng
-   dự báo. Ghi ra `models/forecasts.rds` và `data/processed/forecast_rates_{lc,rh,cbd}.csv`.
-4. `R/04_backtest.R` — với mỗi split trong `backtest.splits`, refit trên
-   `years <= train_end` rồi dự báo đến `test_end`, ghi ra
-   `data/processed/backtest_lc_{train_end}_{test_end}.csv`.
-   **Chỉ nhánh LC được cài đặt** — vòng lặp cho RH/CBD vẫn là `TODO` trong source; đừng
-   giả định các file CSV backtest của hai mô hình này đã tồn tại.
+Đường dẫn theo dataset (định nghĩa trong `R/lib/load_data.R`):
+- input: `data/processed/<dataset>/Dxt_{series}.csv`, `Ext_{series}.csv`
+- object: `models/<dataset>/<model>_fit.rds`, `forecasts.rds`
+- output CSV cho Python: `results/<dataset>/params_<model>_{age,kt,gc}.csv`,
+  `residuals_<model>.csv`, `forecast_rates_<model>.csv`, `backtest_<model>_<train_end>_<test_end>.csv`
 
-`R/utils.R` chứa `plot_residual_heatmap()` (chẩn đoán ad-hoc) và các hàm xuất kết quả
-fit dùng chung cho `R/02a_fit_lc.R`/`02b_fit_rh.R`/`02c_fit_cbd.R` nêu trên.
+## `R/lib/` — chỉ `source()`, không chạy trực tiếp
 
-## Ghi chú khi fit mô hình trong R
+- `load_data.R` — `load_config()`, `get_dataset(cfg)`, `processed_dir/models_dir/results_dir`,
+  `load_stmomo_data(dataset, series)` → `StMoMoData` (type `"central"`).
+- `models.R` — `model_spec(name)` cho `lc`, `rh`, `apc`, `cbd`, `m7`; `model_ages(name, cfg)`
+  (tra `models.<name>.ages` → `ages.<key>`); `fit_years(cfg)`; `fit_model(name, dat, cfg,
+  years_fit, start)` dùng chung cho fit chính thức lẫn backtest. `COHORT_MODELS` = rh, apc, m7.
+- `export.R` — `save_fit(f, name, dataset)` = saveRDS + `export_params()` + `export_fit_summary()`
+  (ghi CSV + in AIC/BIC).
+- `diagnostics.R` — `plot_residual_heatmap()` (chẩn đoán ad-hoc; hình luận văn vẽ bằng Python).
 
-- RH dùng `cohortAgeFun = "1"` (β₀=1, theo Haberman & Renshaw 2011) và được khởi tạo từ
-  kết quả fit LC (đọc từ `models/lc_fit.rds`, không refit lại trong `02b_fit_rh.R`); hội
-  tụ chậm (`iterMax = 1e5`), cần kiểm tra `RHfit$conv`. Ngoài ra dùng `wxt =
-  genWeightMat(ages_lc, years_fit, clip = 3)` để loại các cohort ở rìa Lexis diagram có
-  quá ít quan sát — khuyến nghị chuẩn trong vignette StMoMo để tránh ước lượng `gc` bất
-  ổn ở biên, khác với (và không thay thế) ràng buộc chuẩn hoá nội bộ của `rh()`.
+## Thứ tự chạy
+
+1. Fit — mỗi mô hình một file, mỗi file chỉ gọi `fit_model()` + `save_fit()`:
+   `02a_fit_lc.R` → `02b_fit_rh.R` (cần `models/<dataset>/lc_fit.rds`, dừng sớm với thông báo
+   rõ nếu chưa có) ; `02c_fit_cbd.R`, `02d_fit_apc.R`, `02e_fit_m7.R` độc lập.
+2. `03_forecast.R` — nạp mọi `<model>_fit.rds` đã có trong `models/<dataset>/`, dự báo (cohort
+   bằng ARIMA(1,1,0)), mô phỏng LC `forecast.n_simulations` đường. **CBD/M7 (logit) xuất q(x,t),
+   LC/RH/APC xuất m(x,t)** trong `forecast_rates_*.csv`.
+3. `04_backtest.R` — mỗi mô hình trong `backtest.models` × mỗi split trong `backtest.splits`:
+   refit trên `train_start..train_end`, dự báo đến `test_end`, ghi sai số log. Mô hình logit
+   được so với q = 1 − exp(−m). Mặc định `backtest.models: ["lc"]`; đã chạy thử được cả 5 mô hình.
+4. `05_fit_llt.R` (nhánh C) và `06_simulate_scenarios.R` (ứng dụng) — **mới là khung**, header
+   liệt kê các bước, thân script `stop()`. Đừng giả định output của chúng tồn tại.
+
+## Ghi chú khi fit mô hình
+
+- RH dùng `cohortAgeFun = "1"` (β₀=1, Haberman & Renshaw 2011) + `approxConst = TRUE`, khởi tạo từ
+  LC (không refit LC trong `02b_fit_rh.R`); hội tụ chậm (`iterMax = 1e5`), `fit_model()` cảnh báo
+  khi `conv` sai.
+- RH/APC/M7 dùng `wxt = genWeightMat(ages, years, clip = fitting.cohort_clip)` để loại cohort
+  ở rìa Lexis có quá ít quan sát — khác với (và không thay thế) ràng buộc chuẩn hoá của mô hình.
+- CBD/M7 trên WPP báo cảnh báo `non-integer #successes in a binomial glm` — do `Dxt = mx * Ext`
+  là đại lượng suy ra, không phải số đếm (xem `data-pipeline.md`); không phải lỗi code.
 - Series mặc định là `"total"`, trừ khi cần fit riêng theo giới tính.

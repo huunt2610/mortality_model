@@ -1,22 +1,31 @@
+# ============================================================
 # 04_backtest.R — Out-of-sample backtest theo cac split trong config/params.yaml
-# Voi moi split: refit tren nam <= train_end, du bao den test_end,
-# xuat sai so tung tuoi-nam ra CSV de src/evaluation tinh RMSE/MAPE.
-library(StMoMo); library(yaml)
-source("R/01_load_data.R")
-cfg  <- yaml::read_yaml("config/params.yaml")
-dat  <- load_vn_data("total")
+# Chay  : Rscript R/04_backtest.R [dataset]
+# Voi moi split va moi mo hinh trong `backtest.models`: refit tren train_start..train_end,
+# du bao den test_end, xuat sai so log tung tuoi-nam ra
+# results/<dataset>/backtest_<model>_<train_end>_<test_end>.csv de src/evaluation tinh RMSE/MAPE.
+# ============================================================
+source("R/lib/load_data.R")
+source("R/lib/models.R")
 
-run_split <- function(train_start, train_end, test_end) {
-  yr_tr <- dat$years[dat$years >= train_start & dat$years <= train_end]
-  h     <- test_end - train_end
-  amin  <- cfg$ages$lc_rh$min; amax <- cfg$ages$lc_rh$max
-  fitLC <- fit(lc(), Dxt = dat$Dxt, Ext = dat$Ext, ages = dat$ages,
-               years = dat$years, ages.fit = amin:amax, years.fit = yr_tr)
-  forLC <- forecast(fitLC, h = h)
-  actual <- (dat$Dxt / dat$Ext)[as.character(amin:amax),
-                                as.character((train_end + 1):test_end)]
-  err <- log(forLC$rates) - log(actual)
-  write.csv(err, sprintf("data/processed/backtest_lc_%d_%d.csv", train_end, test_end))
-  # TODO: lap lai cho RH va CBD (chu y RH co the khong hoi tu tren tap ngan hon)
+cfg <- load_config()
+dataset <- get_dataset(cfg)
+dat <- load_stmomo_data(dataset, "total")
+
+for (name in cfg$backtest$models) {
+  ages_fit <- model_ages(name, cfg)
+  for (s in cfg$backtest$splits) {
+    yr_tr <- dat$years[dat$years >= s$train_start & dat$years <= s$train_end]
+    # RH khoi tao tu LC refit tren cung tap train (chu y RH co the khong hoi tu tren tap ngan)
+    start <- if (name == "rh") fit_model("lc", dat, cfg, years_fit = yr_tr) else NULL
+    f <- fit_model(name, dat, cfg, years_fit = yr_tr, start = start)
+    fc <- forecast_model(f, name, h = s$test_end - s$train_end)
+
+    mx <- (dat$Dxt / dat$Ext)[as.character(ages_fit), as.character((s$train_end + 1):s$test_end)]
+    # So sanh cung dai luong: link logit du bao q(x,t) = 1 - exp(-m(x,t))
+    actual <- if (cfg$models[[name]]$link == "logit") 1 - exp(-mx) else mx
+    err <- log(fc$rates) - log(actual)
+    write.csv(err, file.path(results_dir(dataset),
+                             sprintf("backtest_%s_%d_%d.csv", name, s$train_end, s$test_end)))
+  }
 }
-for (s in cfg$backtest$splits) run_split(s$train_start, s$train_end, s$test_end)

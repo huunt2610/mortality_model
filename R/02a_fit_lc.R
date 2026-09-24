@@ -1,24 +1,18 @@
 # ============================================================
-# 02a_fit_lc.R — Fit Lee-Carter tren du lieu Viet Nam
-# Input : data/processed/Dxt_total.csv, Ext_total.csv
-# Output: models/lc_fit.rds, data/processed/params_lc_*.csv, residuals_lc.csv
+# 02a_fit_lc.R — Fit Lee-Carter (M1)
+# Chay  : Rscript R/02a_fit_lc.R [dataset]   (mac dinh: default_dataset trong config)
+# Input : data/processed/<dataset>/Dxt_total.csv, Ext_total.csv
+# Output: models/<dataset>/lc_fit.rds, results/<dataset>/params_lc_*.csv, residuals_lc.csv
 # ============================================================
-library(StMoMo)
-library(yaml)
-source("R/01_load_data.R")
-source("R/utils.R")
+source("R/lib/load_data.R")
+source("R/lib/models.R")
+source("R/lib/export.R")
 
-cfg <- yaml::read_yaml("config/params.yaml")
-dat <- load_vn_data("total")
+cfg <- load_config()
+dataset <- get_dataset(cfg)
+dat <- load_stmomo_data(dataset, "total")
 
-ages_lc <- cfg$ages$lc_rh$min:cfg$ages$lc_rh$max
 # Loai giai doan chien tranh/bien dong lich su (truoc 1980) khoi uoc luong
 # tham so - xem ghi chu trong config/params.yaml (fitting.years)
-years_fit <- cfg$fitting$years$start:cfg$fitting$years$end
-
-LCfit <- fit(lc(link = "log"), Dxt = dat$Dxt, Ext = dat$Ext, ages = dat$ages,
-             years = dat$years, ages.fit = ages_lc, years.fit = years_fit)
-
-saveRDS(LCfit, "models/lc_fit.rds")
-export_params(LCfit, "lc")
-export_fit_summary(LCfit, "lc")
+LCfit <- fit_model("lc", dat, cfg)
+save_fit(LCfit, "lc", dataset)

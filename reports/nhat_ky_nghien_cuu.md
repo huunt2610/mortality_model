@@ -192,3 +192,42 @@ hiển thị trong notebook — cần người dùng mở và Run All + lưu l�
 - Cần cập nhật `.claude/rules/language-split.md`: ghi chú "chỉ notebook 01, 02 có nội dung thật"
   đã lỗi thời — notebook 03 (làm trơn/graduation) và 04 (Lee-Carter) hiện đã có nội dung đầy đủ,
   chỉ còn 05-08 là placeholder/stub thật sự (xem cập nhật cùng ngày trong CLAUDE.md/rules).
+
+## 2026-09-24 — Đổi cửa sổ ước lượng từ 1980-2010 sang 1990-2008 theo thiết kế nhánh B
+
+**Vấn đề/quyết định:** Tái cấu trúc repo theo `docs/ban-do-tri-thuc-luan-van-du-bao-tu-vong.md`
+(ba nhánh A/B/C). Nhánh B (Mục 12.2) yêu cầu khớp trên WPP **1990-2008**, dự báo 2009-2024 rồi
+kiểm chứng với bảng sống TCTK 2009, 2014, 2019, 2024 (tầm 1, 6, 11, 16 năm). Theo quyết định
+của học viên, `config/params.yaml::fitting.years` đổi từ 1980-2010 thành 1990-2008;
+`backtest.splits` đổi thành {1990, 2008, 2023} (split chính) và {1990, 2003, 2013} (ổn định).
+
+**Dẫn chứng cụ thể (LC, series total, tuổi 0-90):**
+
+| Đại lượng | 1980-2010 (cũ) | 1990-2008 (mới) |
+|---|---|---|
+| kt: đầu → cuối | 24,22 → −18,09 | 13,61 → −8,67 |
+| Độ dốc kt | −1,57/năm | −1,38/năm |
+| ax thấp nhất / cao nhất | tuổi 11 (−7,13) / tuổi 90 (−1,55) | tuổi 11 (−7,25) / tuổi 90 (−1,59) |
+| bx cao nhất (tuổi 1) | 0,0361 | 0,0442 |
+| bx thấp nhất | tuổi 90 (0,007) | tuổi 19 (0,0083) |
+| ADF diff(kt), p-value | 0,09 | 0,43 |
+| Cohort residual (min_obs) | 1980 −0,59 / 1910 +0,53 (20) | 1992 −0,57 / 1997 +1,33 (12) |
+| AIC / BIC | 24057,9 / 25312,2 | 14515,4 / 15601,0 |
+
+AIC/BIC các mô hình khác trên cửa sổ mới: RH 14456,9 / 16091,4; APC 14547,6 / 15691,8;
+CBD 7764,8 / 7936,9; M7 6535,9 / 6996,0 (RH hội tụ). AIC/BIC chỉ so được giữa các mô hình cùng
+dải tuổi (LC/RH/APC: 0-90; CBD/M7: 55-90).
+
+**Tình trạng:** Đã xử lý. Refit toàn bộ `R/02a`-`02e`, `03_forecast`, `04_backtest`; chạy lại và
+lưu `notebooks/04_lee_carter.ipynb` (min_obs cohort đổi thành ~2/3 số năm fit, tính động, vì 20
+không khả thi với 19 năm); cập nhật markdown liên quan ở notebook 01, 02, 03, 04 và mục 3.2 của
+`reports/thesis/chuong3_eda_lc.md`; sinh lại 3 hình LC.
+
+**Phương hướng:**
+- ADF trên kt với 18 sai phân không còn cho bằng chứng gì — bằng chứng cho RWD dựa hoàn toàn vào
+  kiểm định $\bar m_t$ 1955-2023 ở notebook 02; nêu rõ trong phần Hạn chế.
+- Cohort residual cực trị giờ nằm ở cohort trẻ sát biên (chỉ quan sát tuổi 0-16), gắn với vùng
+  tuổi nhỏ nghi artifact UN — không diễn giải như hiệu ứng thế hệ; chờ γc của RH (notebook 05)
+  và nhớ Mục 4.2/8.2: γc trên WPP không diễn giải như dấu vết lịch sử.
+- Cửa sổ 19 năm: RH có γc cho các cohort rìa kém định danh — bản đồ tri thức xếp RH là "thận trọng"
+  ở nhánh B; APC là đối chứng ổn định hơn.

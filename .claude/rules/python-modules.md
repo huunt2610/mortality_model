@@ -5,32 +5,50 @@ paths:
 
 # Bản đồ module Python (`src/`)
 
-- `config.py` — `load_params()` đọc `config/params.yaml`; đồng thời export các hằng
-  đường dẫn `DATA_RAW`, `DATA_INTERIM`, `DATA_PROCESSED`, `DATA_EXTERNAL`, `FIGURES`.
-- `data/read_raw.py` — `read_wpp_single_age_life_table()` đọc file `.xlsx` UN WPP (dò
-  dòng tiêu đề bằng cách khớp mờ (fuzzy) các nhãn cột thay vì cố định vị trí dòng/cột,
-  vì các bản revision của UN có thể lệch định dạng nhẹ); `read_gso_life_table()` đọc
-  file CSV GSO đã số hoá thủ công và suy ra `mx` từ `qx` khi cần.
-- `data/make_dataset.py` — entrypoint của pipeline (`WPP_FILES` map + `build_matrices()`,
-  được gọi trong `main()`); xem thêm `data-pipeline.md`.
-- `data/validate.py` — `validate_matrices()` (raise cứng, dùng trong `make_dataset.py`)
-  so với `validate_stmomo_window()` (trả về bảng đạt/không đạt cho một cửa sổ tuổi/năm
-  dùng để fit, dùng để hiển thị trong notebook trước khi đưa dữ liệu sang R).
-- `data/smoothing.py` — `whittaker_henderson`/`smooth_mx_surface` (làm trơn 1D theo từng
-  năm), `smooth_mx_surface_2d` (P-splines, làm trơn tensor-product B-spline đồng thời
-  theo cả tuổi *và* năm), `graduate_abridged_mx` (graduation bằng PCHIP từ bảng sống
-  nhóm tuổi về tuổi đơn), và phép ngược lại `aggregate_mx_to_groups`/
-  `gso_age_group_edges` (tuổi đơn → nhóm tuổi, dùng để đối chiếu UN WPP với bảng nhóm
-  tuổi của GSO — nên ưu tiên hơn graduation cho việc đối chiếu này, xem docstring của
-  module để biết lý do).
-- `data/life_table.py` — `build_life_table()` dựng bảng sống đầy đủ (`qx, lx, dx, Lx,
-  Tx, ex`) từ vector `mx`, giả định lực chết không đổi trong khoảng tuổi;
-  `life_expectancy_series()` áp dụng theo từng cột (năm) trên một khoảng năm.
-- `evaluation/metrics.py` — `rmse`, `mape`, `log_rmse`, `poisson_deviance`.
-- `evaluation/cohort.py` — `age_period_residual()`/`cohort_mean_residual()`: phân rã
-  nhanh tuổi+năm của `log m(x,t)` để chẩn đoán trong EDA (có đáng để mô hình hoá hiệu
-  ứng thế hệ không?) — không thay thế cho việc fit RH thật trong R.
-- `visualization/plots.py` — mỗi hàm ứng với một hình trong luận văn
-  (`plot_log_mx_by_age`, `plot_lexis_heatmap`, `plot_mx_sex_comparison`,
-  `plot_mortality_improvement_by_age`, `plot_lc_params`, `plot_residual_heatmap`, v.v.),
-  tất cả đều đi qua `_save()` — xem `figures.md`.
+- `config.py` — `load_params()` đọc `config/params.yaml`; hằng đường dẫn `DATA_RAW`,
+  `DATA_INTERIM`, `DATA_PROCESSED`, `DATA_EXTERNAL`, `MODELS`, `RESULTS`, `FIGURES`;
+  `processed_dir(dataset)` / `results_dir(dataset)` (mặc định `DEFAULT_DATASET = "wpp_vnm"`).
+
+## `data/` — đọc nguồn và dựng ma trận (IO)
+
+- `wpp.py` — `read_wpp_single_age_life_table(path, iso3)` đọc `.xlsx` UN WPP (dò dòng tiêu đề
+  bằng khớp mờ nhãn cột thay vì cố định vị trí, vì các revision của UN có thể lệch định dạng).
+- `hmd.py` — `read_hmd_country(country, sex)` đọc `Deaths_1x1.txt`/`Exposures_1x1.txt` (nhánh A;
+  có số ca tử vong thật).
+- `gso.py` — `read_gso_abridged(year)` đọc bảng sống rút gọn số hoá tay trong
+  `data/external/gso/` (cột sex, x, n, …, nmx, nqx, ex; map năm → file ở `GSO_FILES`);
+  `read_gso_life_table(path)` cho định dạng tuổi đơn (age, sex, mx/qx).
+- `make_dataset.py` — entrypoint `python -m src.data.make_dataset [--dataset X]`; `WPP_DIR`,
+  `WPP_FILES`, `build_matrices()` trả về `(Dxt, Ext, mx)` (dùng cột `deaths` nếu có, không thì
+  `Dxt = mx * Ext`); xem `data-pipeline.md`.
+- `validate.py` — `validate_matrices(Dxt, Ext, mx)` (raise cứng, dùng trong `make_dataset.py`)
+  so với `validate_stmomo_window()` (bảng đạt/không đạt để hiển thị trong notebook).
+
+## `demography/` — toán bảng sống
+
+- `life_table.py` — `build_life_table()` (`qx, lx, dx, Lx, Tx, ex` từ `mx`, lực chết không đổi
+  trong khoảng tuổi); `life_expectancy_series()` theo từng năm.
+- `smoothing.py` — `whittaker_henderson`/`smooth_mx_surface` (1D theo năm),
+  `smooth_mx_surface_2d` + `cv_select_lambda_2d` (P-splines 2D), `graduate_abridged_mx` (PCHIP
+  nhóm tuổi → tuổi đơn).
+- `age_groups.py` — hài hoà nhóm tuổi cho nhánh B: `gso_age_group_edges`,
+  `aggregate_mx_to_groups` (nMx = ΣD/ΣE), `aggregate_qx_to_groups` (nqx = 1 − Π(1 − q), dùng cho
+  dự báo; nhóm mở trả NaN). Ưu tiên gộp nhóm hơn graduation khi đối chiếu với GSO.
+
+## `evaluation/` — tiêu chí đánh giá (bản đồ tri thức Mục 13)
+
+- `metrics.py` — `rmse`, `mape`, `mae`, `log_rmse`, `poisson_deviance`, `coverage`.
+- `decomposition.py` — `decompose_error(F, W, G)`: (F−G) = (F−W) + (W−G) (Mục 12.2).
+- `cohort.py` — `age_period_residual()`/`cohort_mean_residual()`: chẩn đoán nhanh trong EDA,
+  không thay thế fit RH thật trong R.
+
+## `risk/` — ứng dụng (Mục 14)
+
+- `pricing.py` — `cohort_qx(qxt, age, year)` (đường chéo đoàn hệ), `survival_curve`,
+  `annuity_due`, `term_insurance`.
+- `measures.py` — `value_at_risk`, `expected_shortfall`, `risk_capital` (đuôi phải: giá trị hiện
+  tại lớn = tổn thất).
+
+## `visualization/`
+
+- `plots.py` — mỗi hàm ứng với một hình trong luận văn, tất cả đi qua `_save()` — xem `figures.md`.

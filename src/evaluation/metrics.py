@@ -23,3 +23,16 @@ def poisson_deviance(D: np.ndarray, D_hat: np.ndarray) -> float:
     with np.errstate(divide="ignore", invalid="ignore"):
         term = np.where(D > 0, D * np.log(D / D_hat), 0.0)
     return float(2 * np.nansum(term - (D - D_hat)))
+
+
+def mae(actual: np.ndarray, predicted: np.ndarray) -> float:
+    a, p = np.asarray(actual), np.asarray(predicted)
+    return float(np.nanmean(np.abs(a - p)))
+
+
+def coverage(actual: np.ndarray, lower: np.ndarray, upper: np.ndarray) -> float:
+    """Tỷ lệ giá trị quan sát rơi vào khoảng dự báo [lower, upper] - "hiệu chuẩn" của bài toán
+    dự báo; với khoảng 95% tỷ lệ này nên xấp xỉ 0.95."""
+    a, lo, hi = np.asarray(actual), np.asarray(lower), np.asarray(upper)
+    ok = ~np.isnan(a)
+    return float(np.mean((a[ok] >= lo[ok]) & (a[ok] <= hi[ok])))

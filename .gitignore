@@ -1,12 +1,15 @@
 # Data — raw data is large and re-downloadable; keep structure only
-data/raw/*
+# (bảng GSO số hoá tay nằm ở data/external/gso/ và ĐƯỢC commit - không tải lại được)
+data/raw/**
 data/interim/*
 !data/raw/.gitkeep
+!data/raw/*/
+!data/raw/*/.gitkeep
 !data/interim/.gitkeep
 
 # Fitted model objects (large binaries)
-models/*.rds
-models/*.pkl
+models/**/*.rds
+models/**/*.pkl
 
 # Copyrighted papers
 references/*.pdf

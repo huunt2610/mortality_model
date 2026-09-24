@@ -1,23 +1,17 @@
 # ============================================================
-# 02c_fit_cbd.R — Fit Cairns-Blake-Dowd tren du lieu Viet Nam
-# Input : data/processed/Dxt_total.csv, Ext_total.csv
-# Output: models/cbd_fit.rds, data/processed/params_cbd_*.csv, residuals_cbd.csv
+# 02c_fit_cbd.R — Fit Cairns-Blake-Dowd (M5)
+# Chay  : Rscript R/02c_fit_cbd.R [dataset]
+# Input : data/processed/<dataset>/Dxt_total.csv, Ext_total.csv
+# Output: models/<dataset>/cbd_fit.rds, results/<dataset>/params_cbd_*.csv, residuals_cbd.csv
 # ============================================================
-library(StMoMo)
-library(yaml)
-source("R/01_load_data.R")
-source("R/utils.R")
+source("R/lib/load_data.R")
+source("R/lib/models.R")
+source("R/lib/export.R")
 
-cfg <- yaml::read_yaml("config/params.yaml")
-dat <- load_vn_data("total")
+cfg <- load_config()
+dataset <- get_dataset(cfg)
+dat <- load_stmomo_data(dataset, "total")
 
-ages_cbd <- cfg$ages$cbd$min:cfg$ages$cbd$max
-years_fit <- cfg$fitting$years$start:cfg$fitting$years$end
-
-# CBD dung xac suat tu vong qxt (link logit) tren nhom tuoi gia
-CBDfit <- fit(cbd(link = "logit"), Dxt = dat$Dxt, Ext = dat$Ext, ages = dat$ages,
-              years = dat$years, ages.fit = ages_cbd, years.fit = years_fit)
-
-saveRDS(CBDfit, "models/cbd_fit.rds")
-export_params(CBDfit, "cbd")
-export_fit_summary(CBDfit, "cbd")
+# CBD dung xac suat tu vong qxt (link logit) tren nhom tuoi gia (ages.cbd)
+CBDfit <- fit_model("cbd", dat, cfg)
+save_fit(CBDfit, "cbd", dataset)
